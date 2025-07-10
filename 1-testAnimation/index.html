@@ -1,15 +1,71 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite App</title>
-  </head>
-  <body>
-    <div id="app">
-      <canvas id="myCanvas"></canvas>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Musical Ball Physics</title>
+    <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="startScreen">
+        <h1 class="game-title">🎵 VIRAL INSTAGRAM BALL 🎵</h1>
+        <p class="game-subtitle">
+            Idk, but LETS BREAK THE ALGORITHM AND 
+			<br>GET SOME VIEWS!!!!!!🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠🤠
+        </p>
+        <button id="startButton">START</button>
     </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+
+    <canvas id="canvas1"></canvas>
+    🤠
+    <!-- Audio Controls UI - Hidden until game starts -->
+    <div id="audio-controls">
+        <h3>Audio Controls</h3>
+        
+        <div>
+            <label>Instrument:</label>
+            <select id="instrument-select" onchange="changeInstrument(this.value)">
+                <option value="piano">🎹 Piano</option>
+                <option value="guitar">🎸 Guitar</option>
+                <option value="bell">🔔 Bell</option>
+                <option value="organ">🎻 Organ</option>
+                <option value="flute">🪈 Flute</option>
+                <option value="synth">🎛️ Synth</option>
+            </select>
+        </div>
+        
+        <div>
+            <label>Melody:</label>
+            <select id="melody-select" onchange="changeMelody(this.value)">
+                <option value="marioTheme">🍄 Super Mario Bros</option>
+                <option value="zeldaMainTheme">⚔️ Zelda Main Theme</option>
+                <option value="tetrisTheme">🧱 Tetris</option>
+                <option value="sonicGreenHill">🦔 Sonic Green Hill</option>
+                <option value="pokemonTheme">⚡ Pokemon Theme</option>
+                <option value="ffVictory">🗡️ FF Victory</option>
+                <option value="pacmanTheme">👻 Pac-Man</option>
+                <option value="haloTheme">👽 Halo</option>
+                <option value="minecraftSweden">⛏️ Minecraft</option>
+                <option value="megaManWily">🤖 Mega Man</option>
+                <option value="castlevaniaVampireKiller">🧛 Castlevania</option>
+                <option value="undertale">💀 Undertale</option>
+                <option value="portalStillAlive">🍰 Portal</option>
+                <option value="chronoTrigger">⏰ Chrono Trigger</option>
+                <option value="happyBirthday">🎂 Happy Birthday</option>
+                <option value="twinkleTwinkle">⭐ Twinkle Twinkle</option>
+                <option value="jingleBells">🎄 Jingle Bells</option>
+                <option value="odeToJoy">🎼 Ode to Joy</option>
+            </select>
+        </div>
+        
+        <div class="controls-info">
+            Pass through rings to play notes!<br>
+            Press 1-3 for camera speed, Space for shake <br>
+			Press 4 to toggle the menu
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
 </html>
