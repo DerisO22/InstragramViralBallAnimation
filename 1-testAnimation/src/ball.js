@@ -1,119 +1,9 @@
 import { c, canvas } from "./main"
+import { noteFrequencies } from "./Data/noteFrequencies";
+import { melodies } from "./Data/melodies";
 
 // const bounceSound = new Audio('/bounce.wav')
 // bounceSound.volume = 0.03;
-
-// Musical note frequencies (in Hz) - Extended range
-const noteFrequencies = {
-    'C4': 261.63,
-    'Db4': 277.18,
-    'D4': 293.66,
-    'Eb4': 311.13,
-    'E4': 329.63,
-    'F4': 349.23,
-    'Gb4': 369.99,
-    'G4': 392.00,
-    'Ab4': 415.30,
-    'A4': 440.00,
-    'Bb4': 466.16,
-    'B4': 493.88,
-    'C5': 523.25,
-    'Db5': 554.37,
-    'D5': 587.33,
-    'Eb5': 622.25,
-    'E5': 659.25,
-    'F5': 698.46,
-    'Gb5': 739.99,
-    'G5': 783.99,
-    'Ab5': 830.61,
-    'A5': 880.00,
-    'Bb5': 932.33,
-    'B5': 987.77
-};
-
-// Collection of recognizable melodies that work well with irregular bouncing
-const melodies = {
-    // Happy Birthday - Simple, iconic intervals
-    happyBirthday: [
-        'C4', 'C4', 'D4', 'C4', 'F4', 'E4',
-        'C4', 'C4', 'D4', 'C4', 'G4', 'F4',
-        'C4', 'C4', 'C5', 'A4', 'F4', 'E4', 'D4',
-        'Bb4', 'Bb4', 'A4', 'F4', 'G4', 'F4'
-    ],
-
-    // Twinkle Twinkle - Perfect for inconsistent timing
-    twinkleTwinkle: [
-        'C4', 'C4', 'G4', 'G4', 'A4', 'A4', 'G4',
-        'F4', 'F4', 'E4', 'E4', 'D4', 'D4', 'C4',
-        'G4', 'G4', 'F4', 'F4', 'E4', 'E4', 'D4',
-        'G4', 'G4', 'F4', 'F4', 'E4', 'E4', 'D4',
-        'C4', 'C4', 'G4', 'G4', 'A4', 'A4', 'G4',
-        'F4', 'F4', 'E4', 'E4', 'D4', 'D4', 'C4'
-    ],
-
-    // Mary Had a Little Lamb - Simple and memorable
-    maryLamb: [
-        'E4', 'D4', 'C4', 'D4', 'E4', 'E4', 'E4',
-        'D4', 'D4', 'D4', 'E4', 'G4', 'G4',
-        'E4', 'D4', 'C4', 'D4', 'E4', 'E4', 'E4',
-        'D4', 'D4', 'E4', 'D4', 'C4'
-    ],
-
-    // Ode to Joy - Beethoven's iconic melody
-    odeToJoy: [
-        'E4', 'E4', 'F4', 'G4', 'G4', 'F4', 'E4', 'D4',
-        'C4', 'C4', 'D4', 'E4', 'E4', 'D4', 'D4',
-        'E4', 'E4', 'F4', 'G4', 'G4', 'F4', 'E4', 'D4',
-        'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4'
-    ],
-
-    // Jingle Bells - Instantly recognizable
-    jingleBells: [
-        'E4', 'E4', 'E4', 'E4', 'E4', 'E4',
-        'E4', 'G4', 'C4', 'D4', 'E4',
-        'F4', 'F4', 'F4', 'F4', 'F4', 'E4', 'E4', 'E4',
-        'E4', 'D4', 'D4', 'E4', 'D4', 'G4'
-    ],
-
-    // Old MacDonald - Fun and bouncy
-    oldMacDonald: [
-        'C4', 'C4', 'C4', 'G4', 'A4', 'A4', 'G4',
-        'E4', 'E4', 'D4', 'D4', 'C4',
-        'G4', 'G4', 'F4', 'F4', 'E4', 'E4', 'D4',
-        'C4', 'C4', 'C4', 'G4', 'A4', 'A4', 'G4',
-        'E4', 'E4', 'D4', 'D4', 'C4'
-    ],
-
-    // Imperial March (Star Wars) - Dramatic and recognizable
-    imperialMarch: [
-        'G4', 'G4', 'G4', 'Eb4', 'Bb4', 'G4', 'Eb4', 'Bb4', 'G4',
-        'D5', 'D5', 'D5', 'Eb5', 'Bb4', 'Gb4', 'Eb4', 'Bb4', 'G4',
-        'G5', 'G4', 'G4', 'G5', 'Gb5', 'F5', 'E5', 'Eb5', 'E5'
-    ],
-
-    // Für Elise opening - Classical and distinctive
-    furElise: [
-        'E5', 'Eb5', 'E5', 'Eb5', 'E5', 'B4', 'D5', 'C5', 'A4',
-        'C4', 'E4', 'A4', 'B4',
-        'E4', 'Ab4', 'B4', 'C5',
-        'E4', 'E5', 'Eb5', 'E5', 'Eb5', 'E5', 'B4', 'D5', 'C5', 'A4'
-    ],
-
-    // Nokia Ringtone - Instantly recognizable
-    nokiaRingtone: [
-        'E5', 'D5', 'Gb4', 'Ab4',
-        'C5', 'Bb4', 'D4', 'E4',
-        'B4', 'A4', 'Db4', 'E4',
-        'A4'
-    ],
-
-    // Super Mario Bros Theme - Gaming classic
-    marioTheme: [
-        'E5', 'E5', 'E5', 'C5', 'E5', 'G5', 'G4',
-        'C5', 'G4', 'E4', 'A4', 'B4', 'Bb4', 'A4',
-        'G4', 'E5', 'G5', 'A5', 'F5', 'G5', 'E5', 'C5', 'D5', 'B4'
-    ]
-};
 
 // Choose which melody to use (change this to switch melodies)
 const melodySequence = melodies.furElise;
@@ -656,8 +546,8 @@ export class circleRing {
                 ball.velocity.y *= scale
             }
             
-            ball.velocity.x *= 1.01
-            ball.velocity.y *= 1.01
+            ball.velocity.x *= 1
+            ball.velocity.y *= 1
             
             // Create collision effects
             ball.createCollisionEffect()

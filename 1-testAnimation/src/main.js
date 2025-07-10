@@ -1,7 +1,9 @@
 // Enhanced main.js with camera system
 import './style.css'
 import { ball, circleRing } from './ball'
-import { randomIntFromRange, randomColor } from './util';
+import { randomIntFromRange, randomColor } from './Utils/util';
+import { applyCameraTransform, resetCameraTransform, addScreenShake, updateCamera } from './Utils/cameraUtils';
+import { mouse, camera, colors } from './Data/screen';
 
 export const canvas = document.querySelector('canvas');
 export const c = canvas.getContext('2d');
@@ -12,68 +14,11 @@ patrickImage.src = '/savage-patrick.jpg';
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-const mouse = {
-	x: innerWidth / 2,
-	y: innerHeight / 2
-}
-
-// Camera system
-const camera = {
-    x: 0,
-    y: 0,
-    targetX: 0,
-    targetY: 0,
-    smoothing: 0.08, 
-    shakeX: 0,
-    shakeY: 0,
-    shakeIntensity: 0,
-    shakeDecay: 0.9
-};
-
-// Camera functions
-function updateCamera(targetX, targetY) {
-    // Update target position
-    camera.targetX = -targetX + canvas.width / 2;
-    camera.targetY = -targetY + canvas.height / 2;
-    
-    // Smooth camera movement with easing
-    camera.x += (camera.targetX - camera.x) * camera.smoothing;
-    camera.y += (camera.targetY - camera.y) * camera.smoothing;
-    
-    // Update screen shake
-    if (camera.shakeIntensity > 0) {
-        camera.shakeX = (Math.random() - 0.5) * camera.shakeIntensity;
-        camera.shakeY = (Math.random() - 0.5) * camera.shakeIntensity;
-        camera.shakeIntensity *= camera.shakeDecay;
-        
-        // Stop shaking when intensity is very low
-        if (camera.shakeIntensity < 0.1) {
-            camera.shakeIntensity = 0;
-            camera.shakeX = 0;
-            camera.shakeY = 0;
-        }
-    }
-}
-
-function applyCameraTransform() {
-    c.save();
-    c.translate(camera.x + camera.shakeX, camera.y + camera.shakeY);
-}
-
-function resetCameraTransform() {
-    c.restore();
-}
-
-function addScreenShake(intensity) {
-    camera.shakeIntensity = Math.max(camera.shakeIntensity, intensity);
-}
-
 // Export screen shake function for use in ball.js
 window.addScreenShake = addScreenShake;
 
 let ballObjects = [];
 let ringObject, ringObject2, ringObject3;
-const colors = ['#ff0000', '#00ff00', '#0000ff', '#ff00ff'];
 
 const init = () => {
 	ballObjects = [];
@@ -182,7 +127,7 @@ addEventListener('resize', () => {
 addEventListener('keydown', (event) => {
     switch(event.key) {
         case '1':
-            camera.smoothing = 0.05; 
+            camera.smoothing = 0.01; 
             console.log('Camera smoothing: Slow');
             break;
         case '2':
