@@ -1,50 +1,134 @@
 import { c, canvas } from "./main"
-import { noteFrequencies } from "./Data/noteFrequencies";
+import { noteFrequencies, instruments } from "./Data/noteFrequencies";
 import { melodies } from "./Data/melodies";
+import { colors } from "./Data/screen.js";
 
-// const bounceSound = new Audio('/bounce.wav')
-// bounceSound.volume = 0.03;
+// Enhanced Audio System with Instrument Synthesis
+let audioContext;
+let isAudioInitialized = false;
+let currentInstrument = 'piano'; 
 
-// Choose which melody to use (change this to switch melodies)
-const melodySequence = melodies.zeldaMainTheme;
-
-// Function to switch melodies dynamically
-function switchMelody(melodyName) {
-    if (melodies[melodyName]) {
-        melodySequence.length = 0;
-        melodySequence.push(...melodies[melodyName]); 
-        currentNoteIndex = 0;
-        console.log(`Switched to: ${melodyName}`);
-    }
-}
-
-// Global melody tracker
+// Song
+let melodySequence = melodies.marioTheme;
 let currentNoteIndex = 0;
 
-// Audio context for generating tones
-let audioContext;
-let gainNode;
-let isAudioInitialized = false;
-
-// Initialize audio context
 function initAudio() {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        gainNode = audioContext.createGain();
-        gainNode.connect(audioContext.destination);
-        gainNode.gain.value = 0.1; 
-        isAudioInitialized = true;
+    if (!isAudioInitialized) {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            isAudioInitialized = true;
+            console.log('Enhanced Audio System initialized! 🎵');
+        } catch (error) {
+            console.error('Failed to initialize audio:', error);
+        }
     }
 }
 
-// Auto-initialize audio on first user interaction
+// Advanced note synthesis with ADSR envelope and harmonics
+function playNote(frequency, duration = 0.5, velocity = 0.7) {
+    if (!isAudioInitialized || !audioContext) return;
+
+    const instrument = instruments[currentInstrument];
+    const now = audioContext.currentTime;
+    
+    // Create multiple oscillators for harmonics
+    const oscillators = [];
+    const gainNodes = [];
+    
+    // Master gain for the entire note
+    const masterGain = audioContext.createGain();
+    masterGain.connect(audioContext.destination);
+    
+    // Add reverb effect
+    const convolver = audioContext.createConvolver();
+    const reverbGain = audioContext.createGain();
+    reverbGain.gain.value = 0.3;
+    
+    // Create impulse response for reverb
+    const impulseLength = audioContext.sampleRate * 2;
+    const impulse = audioContext.createBuffer(2, impulseLength, audioContext.sampleRate);
+    for (let channel = 0; channel < 2; channel++) {
+        const channelData = impulse.getChannelData(channel);
+        for (let i = 0; i < impulseLength; i++) {
+            channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseLength, 2);
+        }
+    }
+    convolver.buffer = impulse;
+    
+    // Create harmonics
+    instrument.harmonics.forEach((amplitude, index) => {
+        if (amplitude > 0.01) { // Only create audible harmonics
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = instrument.waveform;
+            oscillator.frequency.setValueAtTime(frequency * (index + 1), now);
+            
+            // Connect oscillator -> gain -> master gain
+            oscillator.connect(gainNode);
+            gainNode.connect(masterGain);
+            
+            // Also connect to reverb
+            gainNode.connect(reverbGain);
+            reverbGain.connect(convolver);
+            convolver.connect(audioContext.destination);
+            
+            // ADSR Envelope
+            const harmonicVolume = amplitude * velocity;
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(harmonicVolume, now + instrument.attack);
+            gainNode.gain.exponentialRampToValueAtTime(
+                harmonicVolume * instrument.sustain, 
+                now + instrument.attack + instrument.decay
+            );
+            gainNode.gain.exponentialRampToValueAtTime(
+                0.001, 
+                now + duration + instrument.release
+            );
+            
+            oscillators.push(oscillator);
+            gainNodes.push(gainNode);
+        }
+    });
+    
+    // Start all oscillators
+    oscillators.forEach(osc => osc.start(now));
+    
+    // Stop all oscillators
+    oscillators.forEach(osc => osc.stop(now + duration + instrument.release));
+}
+
+// Function to change instruments
+window.changeInstrument = function(instrumentName) {
+    if (instruments[instrumentName]) {
+        currentInstrument = instrumentName;
+        console.log(`Switched to ${instrumentName} 🎹`);
+        
+        // Play a test note
+        const testNote = melodySequence[currentNoteIndex];
+        const frequency = noteFrequencies[testNote];
+        if (frequency) {
+            playNote(frequency, 0.3);
+        }
+    }
+};
+
+// Function to change melody
+window.changeMelody = function(melodyName) {
+    if (melodies[melodyName]) {
+        melodySequence = melodies[melodyName];
+        currentNoteIndex = 0;
+        console.log(`Switched to ${melodyName} melody 🎵`);
+    }
+};
+
+// Enable audio on user interaction
 function enableAudioOnInteraction() {
     if (!isAudioInitialized) {
         initAudio();
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
-        console.log('Audio enabled! 🎵');
         
         // Remove the event listeners after first interaction
         document.removeEventListener('click', enableAudioOnInteraction);
@@ -60,7 +144,7 @@ document.addEventListener('keydown', enableAudioOnInteraction);
 document.addEventListener('touchstart', enableAudioOnInteraction);
 document.addEventListener('mousemove', enableAudioOnInteraction);
 
-// Show user instruction for audio
+// Show user instruction for audio activation
 function showAudioPrompt() {
     if (!isAudioInitialized) {
         const promptDiv = document.createElement('div');
@@ -70,16 +154,18 @@ function showAudioPrompt() {
                 top: 20px;
                 left: 50%;
                 transform: translateX(-50%);
-                background: rgba(0, 0, 0, 0.8);
+                background: rgba(0, 0, 0, 0.9);
                 color: white;
-                padding: 15px 25px;
-                border-radius: 10px;
+                padding: 20px 30px;
+                border-radius: 15px;
                 font-family: Arial, sans-serif;
                 z-index: 1000;
                 text-align: center;
                 border: 2px solid #00eaff;
+                box-shadow: 0 0 20px rgba(0, 234, 255, 0.5);
             ">
-                🎵 <strong>Click anywhere or move your mouse to enable sound!</strong> 🎵
+                🎵 <strong>Click anywhere to enable enhanced audio!</strong> 🎵<br>
+                <small style="opacity: 0.8;">Features realistic instrument sounds</small>
             </div>
         `;
         document.body.appendChild(promptDiv);
@@ -97,50 +183,18 @@ function showAudioPrompt() {
 // Show prompt when page loads
 setTimeout(showAudioPrompt, 1000);
 
-// Play a musical note
-function playNote(frequency, duration = 0.3) {
-    if (!isAudioInitialized) {
-        console.log('Audio not yet enabled - waiting for user interaction');
-        return;
-    }
-    
-    // Resume audio context if it's suspended
-    if (audioContext.state === 'suspended') {
-        audioContext.resume();
-    }
-    
-    const oscillator = audioContext.createOscillator();
-    const noteGain = audioContext.createGain();
-    
-    oscillator.connect(noteGain);
-    noteGain.connect(gainNode);
-    
-    oscillator.frequency.value = frequency;
-    oscillator.type = 'sine'; 
-    
-    // Create a smooth envelope
-    const now = audioContext.currentTime;
-    noteGain.gain.setValueAtTime(0, now);
-    noteGain.gain.linearRampToValueAtTime(0.3, now + 0.01);
-    noteGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
-    
-    oscillator.start(now);
-    oscillator.stop(now + duration);
-}
-
-// Play next note in sequence
+// Play a musical note from the current sequence
 function playNextNote() {
     const noteName = melodySequence[currentNoteIndex];
     const frequency = noteFrequencies[noteName];
     
     if (frequency) {
-        playNote(frequency);
+        playNote(frequency, 0.4, 0.8);
     }
     
     // Move to next note, loop back to beginning when sequence ends
     currentNoteIndex = (currentNoteIndex + 1) % melodySequence.length;
 }
-
 
 // Particle system for impact effects
 class Particle {
@@ -247,7 +301,7 @@ export class ball {
         this.radius = radius
         this.color = color
         this.velocity = {
-            x: 1,
+            x: 7,
             y: 7
         }
         this.friction = 0.999
@@ -387,7 +441,7 @@ export class ball {
         if(this.y - this.radius + this.velocity.y < 0){
             this.velocity.y = -this.velocity.y * this.friction;
             this.createCollisionEffect()
-            playNextNote();
+            playNote(noteFrequencies['C5'], 0.2, 0.5);
         }
 
         // Wall collision for left and right
@@ -402,7 +456,6 @@ export class ball {
     }
 }
 
-// Enhanced circleRing class with camera integration
 // Enhanced circleRing class with camera integration
 export class circleRing {
     constructor(x, y, radius, color, openingWidth){
@@ -424,7 +477,6 @@ export class circleRing {
     }
 
     draw() {
-        // Update glow
         this.glowIntensity = Math.max(this.glowIntensity - 0.02, 0.3)
         
         const startAngle = this.openingWidth + this.currentRotation
@@ -469,7 +521,6 @@ export class circleRing {
     update() {
         this.draw()
         this.currentRotation += this.rotationSpeed
-        // Update particles
         updateParticles()
     }
 
@@ -506,12 +557,10 @@ export class circleRing {
                               distanceToCenter <= outerRadius + ball.radius
         
         if (inOpening && ballInRingArea) {
-            // Ball is in the opening and within the ring thickness
             if (this.ballPreviouslyOutside) {
-                // Ball just passed through the ring!
+                // Ball escapes ring
                 this.shouldDelete = true
                 createImpactParticles(ball.x, ball.y, 3)
-                playNextNote()
                 console.log('Ring passed through! Deleting...')
             }
             this.ballPreviouslyOutside = false
