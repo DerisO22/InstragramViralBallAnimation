@@ -6,7 +6,7 @@ import { melodies } from "./Data/melodies";
 // bounceSound.volume = 0.03;
 
 // Choose which melody to use (change this to switch melodies)
-const melodySequence = melodies.furElise;
+const melodySequence = melodies.zeldaMainTheme;
 
 // Function to switch melodies dynamically
 function switchMelody(melodyName) {
@@ -403,6 +403,7 @@ export class ball {
 }
 
 // Enhanced circleRing class with camera integration
+// Enhanced circleRing class with camera integration
 export class circleRing {
     constructor(x, y, radius, color, openingWidth){
         this.x = x
@@ -418,6 +419,8 @@ export class circleRing {
         }
         this.lastCollisionTime = 0
         this.glowIntensity = 10.5
+        this.shouldDelete = false
+        this.ballPreviouslyOutside = true
     }
 
     draw() {
@@ -472,10 +475,7 @@ export class circleRing {
 
     checkCollision(ball) {
         const currentTime = Date.now()
-        if (currentTime - this.lastCollisionTime < 50) {
-            return
-        }
-
+        
         const dx = ball.x - this.x
         const dy = ball.y - this.y
         const distanceToCenter = Math.sqrt(dx * dx + dy * dy)
@@ -489,18 +489,44 @@ export class circleRing {
         strokeStart = ((strokeStart % (2 * Math.PI)) + (2 * Math.PI)) % (2 * Math.PI)
         strokeEnd = ((strokeEnd % (2 * Math.PI)) + (2 * Math.PI)) % (2 * Math.PI)
         
-        let hitStroke = false
+        // Check if ball is in the opening area
+        let inOpening = false
         if (strokeStart < strokeEnd) {
-            hitStroke = ballAngle >= strokeStart && ballAngle <= strokeEnd
+            inOpening = !(ballAngle >= strokeStart && ballAngle <= strokeEnd)
         } else {
-            hitStroke = ballAngle >= strokeStart || ballAngle <= strokeEnd
+            inOpening = !(ballAngle >= strokeStart || ballAngle <= strokeEnd)
         }
-        
-        if (!hitStroke) return
         
         const strokeThickness = 6
         const innerRadius = this.radius - strokeThickness / 2
         const outerRadius = this.radius + strokeThickness / 2
+        
+        // Check if ball is passing through the ring
+        const ballInRingArea = distanceToCenter >= innerRadius - ball.radius && 
+                              distanceToCenter <= outerRadius + ball.radius
+        
+        if (inOpening && ballInRingArea) {
+            // Ball is in the opening and within the ring thickness
+            if (this.ballPreviouslyOutside) {
+                // Ball just passed through the ring!
+                this.shouldDelete = true
+                createImpactParticles(ball.x, ball.y, 3)
+                playNextNote()
+                console.log('Ring passed through! Deleting...')
+            }
+            this.ballPreviouslyOutside = false
+        } else {
+            this.ballPreviouslyOutside = true
+        }
+        
+        // Only check collision if collision cooldown has passed and ball is not in opening
+        if (currentTime - this.lastCollisionTime < 50 || inOpening) {
+            return
+        }
+        
+        let hitStroke = !inOpening
+        
+        if (!hitStroke) return
         
         let collision = false
         let normalX = 0, normalY = 0

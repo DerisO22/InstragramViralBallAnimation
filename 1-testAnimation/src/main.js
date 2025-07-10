@@ -18,10 +18,11 @@ canvas.height = innerHeight;
 window.addScreenShake = addScreenShake;
 
 let ballObjects = [];
-let ringObject, ringObject2, ringObject3;
+let ringObjects = [];
 
 const init = () => {
 	ballObjects = [];
+	ringObjects = [];
 	
 	for (let i = 0; i < 1; i++){
 		// const x = randomIntFromRange(50, canvas.width - 50);
@@ -33,32 +34,30 @@ const init = () => {
         ballObjects.push(new ball(x, y, radius, color));
 	}
 
-	// Create the ring instance and store it
-	ringObject = new circleRing(
+	// Create ring instances and store them in array
+	ringObjects.push(new circleRing(
 		window.innerWidth / 2, 
 		window.innerHeight / 2, 
 		Math.min(window.innerWidth, window.innerHeight) / 3, 
 		randomColor(colors), 
 		10
-	);
+	));
 
-	// Create the ring instance and store it
-	ringObject2 = new circleRing(
+	ringObjects.push(new circleRing(
 		window.innerWidth / 2, 
 		window.innerHeight / 2, 
-		Math.min(window.innerWidth, window.innerHeight) / 2.4, 
+		Math.min(window.innerWidth, window.innerHeight) / 2.8, 
 		randomColor(colors), 
 		10
-	);
+	));
 
-	// Create the ring instance and store it
-	ringObject3 = new circleRing(
+	ringObjects.push(new circleRing(
 		window.innerWidth / 2, 
 		window.innerHeight / 2, 
-		Math.min(window.innerWidth, window.innerHeight) / 2, 
+		Math.min(window.innerWidth, window.innerHeight) / 2.6, 
 		randomColor(colors), 
 		10
-	);
+	));
 }
 
 const animate = () => {
@@ -76,16 +75,19 @@ const animate = () => {
 	// Update and draw all balls
 	ballObjects.forEach(ballObj => {
 		ballObj.update();
-		// Check collision with ring
-		ringObject.checkCollision(ballObj);
-		ringObject2.checkCollision(ballObj);
-		ringObject3.checkCollision(ballObj);
+		// Check collision with all rings
+		ringObjects.forEach(ring => {
+			ring.checkCollision(ballObj);
+		});
 	});
 	
-	// Update and draw the ring
-	ringObject.update();
-	ringObject2.update();
-	ringObject3.update();
+	// Update rings and remove any that should be deleted
+	for (let i = ringObjects.length - 1; i >= 0; i--) {
+		ringObjects[i].update();
+		if (ringObjects[i].shouldDelete) {
+			ringObjects.splice(i, 1);
+		}
+	}
 
     // Reset camera transformation
     resetCameraTransform();
