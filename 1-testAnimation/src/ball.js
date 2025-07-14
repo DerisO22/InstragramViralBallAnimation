@@ -6,7 +6,7 @@ import { colors } from "./Data/screen.js";
 import { randomColor } from "./Utils/util.js";
 
 // ===== MEMORY OPTIMIZATION CONSTANTS =====
-const MAX_BALLS = 1; 
+const MAX_BALLS = 2; 
 const MAX_PARTICLES = 50;
 const AUDIO_POOL_SIZE = 15; 
 const TRAIL_UPDATE_INTERVAL = 3; 
