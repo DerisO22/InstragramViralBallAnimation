@@ -1,22 +1,22 @@
 // Memory-optimized main.js - Can handle thousands of balls
 import "./style.css";
 import {
-	ball,
-	circleRing,
-	cleanupMemory,
-	logMemoryStats,
-	cleanup,
-	MAX_BALLS,
+  ball,
+  circleRing,
+  cleanupMemory,
+  logMemoryStats,
+  cleanup,
+  MAX_BALLS,
 } from "./ball";
 import { randomIntFromRange, randomColor } from "./Utils/util";
 import {
-	applyCameraTransform,
-	resetCameraTransform,
-	addScreenShake,
-	updateCamera,
-	toggleCameraFollowing,
-	centerCamera,
-	moveCameraManually,
+  applyCameraTransform,
+  resetCameraTransform,
+  addScreenShake,
+  updateCamera,
+  toggleCameraFollowing,
+  centerCamera,
+  moveCameraManually,
 } from "./Utils/cameraUtils";
 import { mouse, camera, colors } from "./Data/screen";
 
@@ -40,12 +40,54 @@ let lastMemoryLog = 0;
 let ballObjects = [];
 let ringObjects = [];
 
+// Spatial optimization for high ball counts
+class SpatialGrid {
+  constructor(cellSize = 150) {
+    this.cellSize = cellSize;
+    this.grid = new Map();
+  }
+
+  clear() {
+    this.grid.clear();
+  }
+
+  insert(ball, index) {
+    const cellX = Math.floor(ball.x / this.cellSize);
+    const cellY = Math.floor(ball.y / this.cellSize);
+    const key = `${cellX},${cellY}`;
+
+    if (!this.grid.has(key)) {
+      this.grid.set(key, []);
+    }
+    this.grid.get(key).push({ ball, index });
+  }
+
+  getNearbyBalls(x, y, radius) {
+    const nearby = [];
+    const cellRadius = Math.ceil(radius / this.cellSize);
+    const centerX = Math.floor(x / this.cellSize);
+    const centerY = Math.floor(y / this.cellSize);
+
+    for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+      for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+        const key = `${centerX + dx},${centerY + dy}`;
+        if (this.grid.has(key)) {
+          nearby.push(...this.grid.get(key));
+        }
+      }
+    }
+    return nearby;
+  }
+}
+
+const spatialGrid = new SpatialGrid(150);
+
 export { ballObjects };
 
 // Set initial canvas size
 function resizeCanvas() {
-	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 
 resizeCanvas();
@@ -59,195 +101,232 @@ let audioControlVisibility = true;
 
 // Initialize camera properties if they don't exist
 function initializeCameraProperties() {
-	if (camera.followingEnabled === undefined) camera.followingEnabled = true;
-	if (camera.manualX === undefined) camera.manualX = canvas.width / 2;
-	if (camera.manualY === undefined) camera.manualY = canvas.height / 2;
-	if (camera.shakeX === undefined) camera.shakeX = 0;
-	if (camera.shakeY === undefined) camera.shakeY = 0;
-	if (camera.shakeIntensity === undefined) camera.shakeIntensity = 0;
-	if (camera.shakeDecay === undefined) camera.shakeDecay = 0.9;
+  if (camera.followingEnabled === undefined) camera.followingEnabled = true;
+  if (camera.manualX === undefined) camera.manualX = canvas.width / 2;
+  if (camera.manualY === undefined) camera.manualY = canvas.height / 2;
+  if (camera.shakeX === undefined) camera.shakeX = 0;
+  if (camera.shakeY === undefined) camera.shakeY = 0;
+  if (camera.shakeIntensity === undefined) camera.shakeIntensity = 0;
+  if (camera.shakeDecay === undefined) camera.shakeDecay = 0.9;
 }
 
 startButton.addEventListener("click", () => {
-  	startGame();
+  startGame();
 });
 
 function startGame() {
-	if (gameStarted) return;
+  if (gameStarted) return;
 
-	startScreen.style.display = "none";
-	audioControls.style.display = "block";
+  startScreen.style.display = "none";
+  audioControls.style.display = "block";
 
-	// Initialize camera properties
-	initializeCameraProperties();
+  // Initialize camera properties
+  initializeCameraProperties();
 
-	gameStarted = true;
-	init();
-	animate();
+  gameStarted = true;
+  init();
+  animate();
 }
 
 const init = () => {
-	ballObjects = [];
-	ringObjects = [];
+  ballObjects = [];
+  ringObjects = [];
 
-	// Start with one ball
-	for (let i = 0; i < 1; i++) {
-		const x = canvas.width / 2;
-		const y = canvas.height / 2;
-		const radius = 10;
-		const color = randomColor(colors);
-		ballObjects.push(new ball(x, y, radius, color));
-	}
+  // Start with one ball
+  for (let i = 0; i < 1; i++) {
+    const x = canvas.width / 2;
+    const y = canvas.height / 2;
+    const radius = 10;
+    const color = randomColor(colors);
+    ballObjects.push(new ball(x, y, radius, color));
+  }
 
-	// Create rings
-	ringObjects.push(
-		new circleRing(
-			canvas.width / 2,
-			canvas.height / 2,
-			Math.min(canvas.width, canvas.height) / 4,
-			randomColor(colors),
-			10
-		)
-	);
+  // Create rings
+  ringObjects.push(
+    new circleRing(
+      canvas.width / 2,
+      canvas.height / 2,
+      Math.min(canvas.width, canvas.height) / 4,
+      randomColor(colors),
+      10
+    )
+  );
 
-	ringObjects.push(
-		new circleRing(
-			canvas.width / 2,
-			canvas.height / 2,
-			Math.min(canvas.width, canvas.height) / 3,
-			randomColor(colors),
-			10
-		)
-	);
+  ringObjects.push(
+    new circleRing(
+      canvas.width / 2,
+      canvas.height / 2,
+      Math.min(canvas.width, canvas.height) / 3,
+      randomColor(colors),
+      10
+    )
+  );
 
-	ringObjects.push(
-		new circleRing(
-			canvas.width / 2,
-			canvas.height / 2,
-			Math.min(canvas.width, canvas.height) / 2,
-			randomColor(colors),
-			10
-		)
-	);
+  ringObjects.push(
+    new circleRing(
+      canvas.width / 2,
+      canvas.height / 2,
+      Math.min(canvas.width, canvas.height) / 2,
+      randomColor(colors),
+      10
+    )
+  );
 
-	ringObjects.push(
-		new circleRing(
-			canvas.width / 2,
-			canvas.height / 2,
-			Math.min(canvas.width, canvas.height) / 1.8,
-			randomColor(colors),
-			10
-		)
-	);
+  ringObjects.push(
+    new circleRing(
+      canvas.width / 2,
+      canvas.height / 2,
+      Math.min(canvas.width, canvas.height) / 1.8,
+      randomColor(colors),
+      10
+    )
+  );
 
-	console.log("🚀 Memory-optimized game initialized!");
-	console.log(`💾 Can handle up to ${MAX_BALLS} balls efficiently`);
+  console.log("🚀 Memory-optimized game initialized!");
+  console.log(`💾 Can handle up to ${MAX_BALLS} balls efficiently`);
 };
 
 // Efficient performance monitoring
 function monitorPerformance() {
-	frameCount++;
-	const currentTime = performance.now();
+  frameCount++;
+  const currentTime = performance.now();
 
-	// Check FPS and adjust camera every second
-	if (currentTime - lastFrameTime >= 1000) {
-		const fps = Math.round((frameCount * 1000) / (currentTime - lastFrameTime));
+  // Check FPS and adjust camera every second
+  if (currentTime - lastFrameTime >= 1000) {
+    const fps = Math.round((frameCount * 1000) / (currentTime - lastFrameTime));
 
-		// Dynamic camera adjustment
-		if (fps < 30) {
-			camera.smoothing = 0.2;
-		} else if (fps < 45) {
-			camera.smoothing = 0.15;
-		} else if (fps < 55) {
-			camera.smoothing = 0.1;
-		} else {
-			camera.smoothing = 0.08;
-		}
+    // Dynamic camera adjustment
+    if (fps < 30) {
+      camera.smoothing = 0.2;
+    } else if (fps < 45) {
+      camera.smoothing = 0.15;
+    } else if (fps < 55) {
+      camera.smoothing = 0.1;
+    } else {
+      camera.smoothing = 0.08;
+    }
 
-		frameCount = 0;
-		lastFrameTime = currentTime;
+    frameCount = 0;
+    lastFrameTime = currentTime;
 
-		// Log memory stats every 10 seconds
-		if (currentTime - lastMemoryLog >= 10000) {
-		console.log(`🎯 FPS: ${fps} | Camera: ${camera.smoothing}`);
-		logMemoryStats();
-		lastMemoryLog = currentTime;
-		}
-	}
+    // Log memory stats every 10 seconds
+    if (currentTime - lastMemoryLog >= 10000) {
+      console.log(`🎯 FPS: ${fps} | Camera: ${camera.smoothing}`);
+      logMemoryStats();
+      lastMemoryLog = currentTime;
+    }
+  }
 
-	// Memory cleanup every 5 seconds
-		if (currentTime - lastMemoryCleanup >= 100000) {
-			cleanupMemory();
-			lastMemoryCleanup = currentTime;
-		}
-	}
+  // Memory cleanup every 5 seconds
+  if (currentTime - lastMemoryCleanup >= 100000) {
+    cleanupMemory();
+    lastMemoryCleanup = currentTime;
+  }
+}
 
-	// Batch processing for better performance
-	function updateBallsBatch(startIndex, batchSize) {
-	const endIndex = Math.min(startIndex + batchSize, ballObjects.length);
+// Optimized batch processing for better performance
+function updateBallsBatch(startIndex, batchSize) {
+  const endIndex = Math.min(startIndex + batchSize, ballObjects.length);
 
-	for (let i = startIndex; i < endIndex; i++) {
-		if (ballObjects[i]) {
-			ballObjects[i].update();
+  for (let i = startIndex; i < endIndex; i++) {
+    if (ballObjects[i]) {
+      ballObjects[i].update();
 
-			// Check collisions with rings
-			ringObjects.forEach((ring) => {
-				ring.checkCollision(ballObjects[i]);
-			});
-		}
-	}
+      // OPTIMIZED: Only check collisions for every Nth ball when there are many
+      const checkCollisions =
+        ballObjects.length <= 50 ||
+        i % Math.ceil(ballObjects.length / 50) === 0;
 
-	return endIndex;
+      if (checkCollisions) {
+        // Check collisions with rings
+        ringObjects.forEach((ring) => {
+          ring.checkCollision(ballObjects[i]);
+        });
+      }
+    }
+  }
+
+  return endIndex;
 }
 
 const animate = () => {
-	if (!gameStarted) return;
+  if (!gameStarted) return;
 
-	animationId = requestAnimationFrame(animate);
+  animationId = requestAnimationFrame(animate);
 
-	// Performance monitoring
-	monitorPerformance();
+  // Performance monitoring
+  monitorPerformance();
 
-	c.clearRect(0, 0, canvas.width, canvas.height);
+  c.clearRect(0, 0, canvas.width, canvas.height);
 
-	// UPDATED: Camera follows first ball only if following is enabled
-	if (ballObjects.length > 0) {
-		updateCamera(ballObjects[0].x, ballObjects[0].y);
-	} else {
-		// No balls, just update camera for manual movement/shake
-		updateCamera();
-	}
+  // UPDATED: Camera follows first ball only if following is enabled
+  if (ballObjects.length > 0) {
+    updateCamera(ballObjects[0].x, ballObjects[0].y);
+  } else {
+    // No balls, just update camera for manual movement/shake
+    updateCamera();
+  }
 
-	applyCameraTransform();
+  applyCameraTransform();
 
-	// Process balls in batches for better performance
-	const batchSize = ballObjects.length > 200 ? 50 : ballObjects.length;
-	let processedBalls = 0;
+  // Process balls with spatial optimization for high counts
+  if (ballObjects.length > 100) {
+    spatialGrid.clear();
 
-	while (processedBalls < ballObjects.length) {
-		processedBalls = updateBallsBatch(processedBalls, batchSize);
-	}
+    // Insert all balls into spatial grid
+    ballObjects.forEach((ball, index) => {
+      spatialGrid.insert(ball, index);
+    });
 
-	// Update rings and remove deleted ones
-	for (let i = ringObjects.length - 1; i >= 0; i--) {
-		ringObjects[i].update();
-		if (ringObjects[i].shouldDelete) {
-			ringObjects.splice(i, 1);
-		}
-	}
+    // Update balls in batches
+    const batchSize = Math.min(ballObjects.length, 20);
+    let processedBalls = 0;
 
-	resetCameraTransform();
+    while (processedBalls < ballObjects.length) {
+      processedBalls = updateBallsBatch(processedBalls, batchSize);
+    }
 
-	// Performance info display
-	// drawPerformanceInfo();
+    // Only check ring collisions for balls near rings (spatial optimization)
+    ringObjects.forEach((ring) => {
+      const nearbyBalls = spatialGrid.getNearbyBalls(
+        ring.x,
+        ring.y,
+        ring.radius + 100
+      );
+      nearbyBalls.forEach(({ ball }) => {
+        ring.checkCollision(ball);
+      });
+    });
+  } else {
+    // Use normal collision detection for smaller numbers
+    const batchSize = ballObjects.length > 200 ? 50 : ballObjects.length;
+    let processedBalls = 0;
 
-	// Patrick image
-	const worldMouseX = mouse.x;
-	const worldMouseY = mouse.y;
+    while (processedBalls < ballObjects.length) {
+      processedBalls = updateBallsBatch(processedBalls, batchSize);
+    }
+  }
 
-	applyCameraTransform();
-	c.drawImage(patrickImage, worldMouseX, worldMouseY, 25, 25);
-	resetCameraTransform();
+  // Update rings and remove deleted ones
+  for (let i = ringObjects.length - 1; i >= 0; i--) {
+    ringObjects[i].update();
+    if (ringObjects[i].shouldDelete) {
+      ringObjects.splice(i, 1);
+    }
+  }
+
+  resetCameraTransform();
+
+  // Performance info display
+  // drawPerformanceInfo();
+
+  // Patrick image
+  const worldMouseX = mouse.x;
+  const worldMouseY = mouse.y;
+
+  applyCameraTransform();
+  c.drawImage(patrickImage, worldMouseX, worldMouseY, 25, 25);
+  resetCameraTransform();
 };
 
 // // Enhanced performance display with camera status
@@ -297,53 +376,53 @@ const animate = () => {
 
 // Memory stress test function
 function spawnBallBurst(count = 50) {
-	console.log(`Spawning ${count} balls for stress test...`);
+  console.log(`Spawning ${count} balls for stress test...`);
 
-	for (let i = 0; i < count && ballObjects.length < MAX_BALLS; i++) {
-		const x = canvas.width / 2 + (Math.random() - 0.5) * 200;
-		const y = canvas.height / 2 + (Math.random() - 0.5) * 200;
-		const radius = 6 + Math.random() * 8;
-		const color = randomColor(colors);
+  for (let i = 0; i < count && ballObjects.length < MAX_BALLS; i++) {
+    const x = canvas.width / 2 + (Math.random() - 0.5) * 200;
+    const y = canvas.height / 2 + (Math.random() - 0.5) * 200;
+    const radius = 6 + Math.random() * 8;
+    const color = randomColor(colors);
 
-		const newBall = new ball(x, y, radius, color);
-		newBall.velocity.x = (Math.random() - 0.5) * 15;
-		newBall.velocity.y = (Math.random() - 0.5) * 15;
-		ballObjects.push(newBall);
-	}
+    const newBall = new ball(x, y, radius, color);
+    newBall.velocity.x = (Math.random() - 0.5) * 15;
+    newBall.velocity.y = (Math.random() - 0.5) * 15;
+    ballObjects.push(newBall);
+  }
 
-	console.log(`Total balls: ${ballObjects.length}/${MAX_BALLS}`);
-	}
+  console.log(`Total balls: ${ballObjects.length}/${MAX_BALLS}`);
+}
 
-	// Advanced cleanup for extreme ball counts
-	function aggressiveCleanup() {
-	console.log("Performing aggressive cleanup...");
+// Advanced cleanup for extreme ball counts
+function aggressiveCleanup() {
+  console.log("Performing aggressive cleanup...");
 
-	// Remove balls that are moving very slowly (likely stuck)
-	for (let i = ballObjects.length - 1; i >= 0; i--) {
-		const ball = ballObjects[i];
-		const speed = Math.sqrt(
-			ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y
-		);
+  // Remove balls that are moving very slowly (likely stuck)
+  for (let i = ballObjects.length - 1; i >= 0; i--) {
+    const ball = ballObjects[i];
+    const speed = Math.sqrt(
+      ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y
+    );
 
-		if (speed < 0.5) {
-			// Very slow balls
-			ballObjects.splice(i, 1);
-		}
-	}
+    if (speed < 0.5) {
+      // Very slow balls
+      ballObjects.splice(i, 1);
+    }
+  }
 
-	// If still too many, remove oldest balls
-	if (ballObjects.length > MAX_BALLS * 0.8) {
-		const toRemove = Math.floor(ballObjects.length * 0.2);
-		ballObjects.splice(0, toRemove);
-		console.log(`Removed ${toRemove} oldest balls`);
-	}
+  // If still too many, remove oldest balls
+  if (ballObjects.length > MAX_BALLS * 0.8) {
+    const toRemove = Math.floor(ballObjects.length * 0.2);
+    ballObjects.splice(0, toRemove);
+    console.log(`Removed ${toRemove} oldest balls`);
+  }
 
-	// Force garbage collection hint
-	if (window.gc) {
-		window.gc();
-	}
+  // Force garbage collection hint
+  if (window.gc) {
+    window.gc();
+  }
 
-	console.log(`Cleanup complete. Balls remaining: ${ballObjects.length}`);
+  console.log(`Cleanup complete. Balls remaining: ${ballObjects.length}`);
 }
 
 // Event Listeners
@@ -363,168 +442,162 @@ addEventListener("resize", () => {
 
 // Enhanced keyboard controls with camera following
 addEventListener("keydown", (event) => {
-	if (!gameStarted) {
-		if (event.key === " " || event.key === "Enter") {
-			event.preventDefault();
-			startGame();
-		}
-		return;
-	}
+  if (!gameStarted) {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      startGame();
+    }
+    return;
+  }
 
-	switch (event.key.toLowerCase()) {
-		case "1":
-			camera.smoothing = 0.01;
-			console.log("📷 Camera smoothing: Ultra Slow (0.01)");
-			break;
-		case "2":
-			camera.smoothing = 0.08;
-			console.log("📷 Camera smoothing: Normal (0.08)");
-			break;
-		case "3":
-			camera.smoothing = 0.15;
-			console.log("📷 Camera smoothing: Fast (0.15)");
-			break;
-		case "4":
-			audioControlVisibility = !audioControlVisibility;
-			audioControls.style.display = audioControlVisibility ? "block" : "none";
-			break;
-		case "5":
-			// Manual memory cleanup
-			cleanupMemory();
-			console.log("🧹 Manual cleanup performed!");
-			break;
-		case "6":
-			// Memory stats
-			logMemoryStats();
-			break;
-		case "7":
-			// Reset to single ball
-			if (ballObjects.length > 1) {
-				const firstBall = ballObjects[0];
-				ballObjects = [firstBall];
-				console.log("🔄 Reset to single ball!");
-			}
-			break;
-		case "8":
-			// Spawn 10 balls for testing
-			spawnBallBurst(10);
-			break;
-		case "9":
-			// Spawn 100 balls for stress test
-			spawnBallBurst(100);
-			break;
-		case "0":
-			// Spawn 500 balls for extreme stress test
-			spawnBallBurst(500);
-			break;
-		case "f": 
-			const wasFollowing = toggleCameraFollowing();
-			console.log(
-				`Camera following toggled: ${wasFollowing ? "ON" : "OFF"}`
-			);
-			break;
-		case "r":
-			if (camera.followingEnabled === false) {
-				centerCamera();
-			} else {
-				console.log(
-				"Camera is following - disable following first with 'F'"
-				);
-			}
-			break;
-		case "arrowup": 
-		case "w":
-			event.preventDefault();
-			if (camera.followingEnabled === false) {
-				moveCameraManually(0, -50);
-				console.log("Camera moved up");
-			} else {
-				console.log("Press 'F' to disable following first");
-			}
-			break;
-		case "arrowdown": 
-		case "s":
-			event.preventDefault();
-			if (camera.followingEnabled === false) {
-				moveCameraManually(0, 50);
-				console.log("Camera moved down");
-			} else {
-				console.log("Press 'F' to disable following first");
-			}
-			break;
-		case "arrowleft": 
-		case "a":
-			event.preventDefault();
-			if (camera.followingEnabled === false) {
-				moveCameraManually(-50, 0);
-				console.log("Camera moved left");
-			} else {
-				console.log("Press 'F' to disable following first");
-			}
-			break;
-		case "arrowright": 
-		case "d":
-			event.preventDefault();
-			if (camera.followingEnabled === false) {
-				moveCameraManually(50, 0);
-				console.log("Camera moved right");
-			} else {
-				console.log("Press 'F' to disable following first");
-			}
-			break;
-		case "m":
-			// Detailed memory stats
-			logMemoryStats();
-			console.log(
-				`Browser Memory Usage: ${
-				(performance.memory?.usedJSHeapSize / 1024 / 1024)?.toFixed(2) ||
-				"N/A"
-				} MB`
-			);
-			break;
-		case "c":
-			// Aggressive cleanup
-			aggressiveCleanup();
-			break;
-		case "t":
-			// Toggle trails (for performance)
-			console.log("Trail rendering toggled");
-			break;
-		case " ":
-			event.preventDefault();
-			addScreenShake(20);
-			break;
-	}
+  switch (event.key.toLowerCase()) {
+    case "1":
+      camera.smoothing = 0.01;
+      console.log("📷 Camera smoothing: Ultra Slow (0.01)");
+      break;
+    case "2":
+      camera.smoothing = 0.08;
+      console.log("📷 Camera smoothing: Normal (0.08)");
+      break;
+    case "3":
+      camera.smoothing = 0.15;
+      console.log("📷 Camera smoothing: Fast (0.15)");
+      break;
+    case "4":
+      audioControlVisibility = !audioControlVisibility;
+      audioControls.style.display = audioControlVisibility ? "block" : "none";
+      break;
+    case "5":
+      // Manual memory cleanup
+      cleanupMemory();
+      console.log("🧹 Manual cleanup performed!");
+      break;
+    case "6":
+      // Memory stats
+      logMemoryStats();
+      break;
+    case "7":
+      // Reset to single ball
+      if (ballObjects.length > 1) {
+        const firstBall = ballObjects[0];
+        ballObjects = [firstBall];
+        console.log("🔄 Reset to single ball!");
+      }
+      break;
+    case "8":
+      // Spawn 10 balls for testing
+      spawnBallBurst(10);
+      break;
+    case "9":
+      // Spawn 100 balls for stress test
+      spawnBallBurst(100);
+      break;
+    case "0":
+      // Spawn 500 balls for extreme stress test
+      spawnBallBurst(500);
+      break;
+    case "f":
+      const wasFollowing = toggleCameraFollowing();
+      console.log(`Camera following toggled: ${wasFollowing ? "ON" : "OFF"}`);
+      break;
+    case "r":
+      if (camera.followingEnabled === false) {
+        centerCamera();
+      } else {
+        console.log("Camera is following - disable following first with 'F'");
+      }
+      break;
+    case "arrowup":
+    case "w":
+      event.preventDefault();
+      if (camera.followingEnabled === false) {
+        moveCameraManually(0, -50);
+        console.log("Camera moved up");
+      } else {
+        console.log("Press 'F' to disable following first");
+      }
+      break;
+    case "arrowdown":
+    case "s":
+      event.preventDefault();
+      if (camera.followingEnabled === false) {
+        moveCameraManually(0, 50);
+        console.log("Camera moved down");
+      } else {
+        console.log("Press 'F' to disable following first");
+      }
+      break;
+    case "arrowleft":
+    case "a":
+      event.preventDefault();
+      if (camera.followingEnabled === false) {
+        moveCameraManually(-50, 0);
+        console.log("Camera moved left");
+      } else {
+        console.log("Press 'F' to disable following first");
+      }
+      break;
+    case "arrowright":
+    case "d":
+      event.preventDefault();
+      if (camera.followingEnabled === false) {
+        moveCameraManually(50, 0);
+        console.log("Camera moved right");
+      } else {
+        console.log("Press 'F' to disable following first");
+      }
+      break;
+    case "m":
+      // Detailed memory stats
+      logMemoryStats();
+      console.log(
+        `Browser Memory Usage: ${
+          (performance.memory?.usedJSHeapSize / 1024 / 1024)?.toFixed(2) ||
+          "N/A"
+        } MB`
+      );
+      break;
+    case "c":
+      // Aggressive cleanup
+      aggressiveCleanup();
+      break;
+    case "t":
+      // Toggle trails (for performance)
+      console.log("Trail rendering toggled");
+      break;
+    case " ":
+      event.preventDefault();
+      addScreenShake(20);
+      break;
+  }
 });
 
 // Prevent space bar page scroll
 addEventListener("keydown", (event) => {
-	if (event.key === " ") {
-		event.preventDefault();
-	}
+  if (event.key === " ") {
+    event.preventDefault();
+  }
 });
 
 // Memory monitoring
 setInterval(() => {
-	if (gameStarted && performance.memory) {
-		const memUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
+  if (gameStarted && performance.memory) {
+    const memUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
 
-		// Auto-cleanup if memory usage gets too high
-		if (memUsage > 100 && ballObjects.length > 100) {
-			console.log(
-				`High memory usage: ${memUsage.toFixed(
-				2
-				)}MB - Auto cleanup triggered`
-			);
-			aggressiveCleanup();
-		}
-	}
+    // Auto-cleanup if memory usage gets too high
+    if (memUsage > 100 && ballObjects.length > 100) {
+      console.log(
+        `High memory usage: ${memUsage.toFixed(2)}MB - Auto cleanup triggered`
+      );
+      aggressiveCleanup();
+    }
+  }
 }, 5000);
 
 // Cleanup on page unload
 window.addEventListener("beforeunload", () => {
-	cleanup();
-	console.log("Page cleanup completed");
+  cleanup();
+  console.log("Page cleanup completed");
 });
 
 // Enhanced performance tips in console

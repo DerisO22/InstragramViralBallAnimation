@@ -6,49 +6,49 @@ import { colors } from "./Data/screen.js";
 import { randomColor } from "./Utils/util.js";
 
 // ===== MEMORY OPTIMIZATION CONSTANTS =====
-const MAX_BALLS = 2; 
+const MAX_BALLS = 100; // Changed from 2 to 100
 const MAX_PARTICLES = 50;
-const AUDIO_POOL_SIZE = 15; 
-const TRAIL_UPDATE_INTERVAL = 3; 
+const AUDIO_POOL_SIZE = 15;
+const TRAIL_UPDATE_INTERVAL = 3;
 
 // ===== OBJECT POOLS FOR MEMORY EFFICIENCY =====
 class ObjectPool {
-    constructor(createFn, resetFn, initialSize = 10) {
-        this.createFn = createFn;
-        this.resetFn = resetFn;
-        this.pool = [];
-        this.active = [];
+  constructor(createFn, resetFn, initialSize = 10) {
+    this.createFn = createFn;
+    this.resetFn = resetFn;
+    this.pool = [];
+    this.active = [];
 
-        // Pre-allocate objects
-        for (let i = 0; i < initialSize; i++) {
-            this.pool.push(this.createFn());
-        }
+    // Pre-allocate objects
+    for (let i = 0; i < initialSize; i++) {
+      this.pool.push(this.createFn());
     }
+  }
 
-    get() {
-        let obj;
-        if (this.pool.length > 0) {
-            obj = this.pool.pop();
-        } else {
-            obj = this.createFn();
-        }
-        this.active.push(obj);
-        return obj;
+  get() {
+    let obj;
+    if (this.pool.length > 0) {
+      obj = this.pool.pop();
+    } else {
+      obj = this.createFn();
     }
+    this.active.push(obj);
+    return obj;
+  }
 
-    release(obj) {
-        const index = this.active.indexOf(obj);
-        if (index > -1) {
-            this.active.splice(index, 1);
-            this.resetFn(obj);
-            this.pool.push(obj);
-        }
+  release(obj) {
+    const index = this.active.indexOf(obj);
+    if (index > -1) {
+      this.active.splice(index, 1);
+      this.resetFn(obj);
+      this.pool.push(obj);
     }
+  }
 
-    clear() {
-        this.active.length = 0;
-        this.pool.length = 0;
-    }
+  clear() {
+    this.active.length = 0;
+    this.pool.length = 0;
+  }
 }
 
 // ===== MEMORY-EFFICIENT AUDIO SYSTEM WITH PRIORITY =====
@@ -63,24 +63,24 @@ let melodySequence = melodies.minecraftSweden;
 let currentNoteIndex = 0;
 
 function initAudio() {
-    if (!isAudioInitialized) {
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            isAudioInitialized = true;
+  if (!isAudioInitialized) {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      isAudioInitialized = true;
 
-            // Pre-create audio node pool
-            createAudioNodePool();
-        } catch (error) {
-            console.error("Failed to initialize audio:", error);
-        }
+      // Pre-create audio node pool
+      createAudioNodePool();
+    } catch (error) {
+      console.error("Failed to initialize audio:", error);
     }
+  }
 }
 
 function createAudioNodePool() {
-    audioNodePool = [];
-    for (let i = 0; i < AUDIO_POOL_SIZE; i++) {
-        audioNodePool.push(createAudioNodeSet());
-    }
+  audioNodePool = [];
+  for (let i = 0; i < AUDIO_POOL_SIZE; i++) {
+    audioNodePool.push(createAudioNodeSet());
+  }
 }
 
 function createAudioNodeSet() {
@@ -90,162 +90,162 @@ function createAudioNodeSet() {
 }
 
 function getAudioNodeFromPool() {
-    if (audioNodePool.length > 0) {
-        return audioNodePool.pop();
-    }
-    return createAudioNodeSet();
+  if (audioNodePool.length > 0) {
+    return audioNodePool.pop();
+  }
+  return createAudioNodeSet();
 }
 
 function returnAudioNodeToPool(nodeSet) {
-    // Clean up oscillators
-    nodeSet.oscillators.forEach((osc) => {
-        try {
-            osc.disconnect();
-        } catch (e) {
-        // Oscillator already disconnected
-        }
-    });
-    nodeSet.oscillators = [];
-
-    // Reset gain
-    nodeSet.gainNode.gain.cancelScheduledValues(0);
-    nodeSet.gainNode.gain.value = 0;
-
-    // Reset timestamp
-    nodeSet.createdAt = Date.now();
-
-    // Return to pool if not full
-    if (audioNodePool.length < AUDIO_POOL_SIZE) {
-        audioNodePool.push(nodeSet);
+  // Clean up oscillators
+  nodeSet.oscillators.forEach((osc) => {
+    try {
+      osc.disconnect();
+    } catch (e) {
+      // Oscillator already disconnected
     }
+  });
+  nodeSet.oscillators = [];
+
+  // Reset gain
+  nodeSet.gainNode.gain.cancelScheduledValues(0);
+  nodeSet.gainNode.gain.value = 0;
+
+  // Reset timestamp
+  nodeSet.createdAt = Date.now();
+
+  // Return to pool if not full
+  if (audioNodePool.length < AUDIO_POOL_SIZE) {
+    audioNodePool.push(nodeSet);
+  }
 }
 
 // Add function to clean up old audio nodes
 function cleanupOldAudioNodes() {
-    // Convert Set to Array to iterate and potentially remove items
-    const nodeArray = Array.from(activeAudioNodes);
+  // Convert Set to Array to iterate and potentially remove items
+  const nodeArray = Array.from(activeAudioNodes);
 
-    // Sort by creation time (oldest first)
-    nodeArray.sort((a, b) => a.createdAt - b.createdAt);
+  // Sort by creation time (oldest first)
+  nodeArray.sort((a, b) => a.createdAt - b.createdAt);
 
-    // Remove the oldest audio nodes if we have too many
-    const maxToCleanup = Math.min(3, Math.floor(nodeArray.length * 0.3));
+  // Remove the oldest audio nodes if we have too many
+  const maxToCleanup = Math.min(3, Math.floor(nodeArray.length * 0.3));
 
-    for (let i = 0; i < maxToCleanup; i++) {
-        const nodeSet = nodeArray[i];
+  for (let i = 0; i < maxToCleanup; i++) {
+    const nodeSet = nodeArray[i];
 
-        // Stop all oscillators in this node set
-        nodeSet.oscillators.forEach((osc) => {
-            try {
-                osc.stop(audioContext.currentTime);
-            } catch (e) {
-                // Already stopped
-            }
-        });
+    // Stop all oscillators in this node set
+    nodeSet.oscillators.forEach((osc) => {
+      try {
+        osc.stop(audioContext.currentTime);
+      } catch (e) {
+        // Already stopped
+      }
+    });
 
-        activeAudioNodes.delete(nodeSet);
-        returnAudioNodeToPool(nodeSet);
-    }
+    activeAudioNodes.delete(nodeSet);
+    returnAudioNodeToPool(nodeSet);
+  }
 }
 
 // MEMORY-EFFICIENT note synthesis with priority system
 function playNote(frequency, duration = 0.5, velocity = 0.7, priority = false) {
-    if (!isAudioInitialized || !audioContext) return;
+  if (!isAudioInitialized || !audioContext) return;
 
-    // Priority system: always allow audio for first few balls or high priority sounds
-    const allowAudio =
-        priority ||
-        activeAudioNodes.size < AUDIO_POOL_SIZE ||
-        ballObjects.length <= 10; 
+  // Priority system: always allow audio for first few balls or high priority sounds
+  const allowAudio =
+    priority ||
+    activeAudioNodes.size < AUDIO_POOL_SIZE ||
+    ballObjects.length <= 10;
 
-    if (!allowAudio) {
-        // If we have too many audio nodes and it's not priority,
-        // try to clean up old ones first
-        cleanupOldAudioNodes();
+  if (!allowAudio) {
+    // If we have too many audio nodes and it's not priority,
+    // try to clean up old ones first
+    cleanupOldAudioNodes();
 
-        // After cleanup, check again
-        if (activeAudioNodes.size >= AUDIO_POOL_SIZE && ballObjects.length > 10) {
-            return;
-        }
+    // After cleanup, check again
+    if (activeAudioNodes.size >= AUDIO_POOL_SIZE && ballObjects.length > 10) {
+      return;
     }
+  }
 
-    const nodeSet = getAudioNodeFromPool();
-    const instrument = instruments[currentInstrument];
-    const now = audioContext.currentTime;
+  const nodeSet = getAudioNodeFromPool();
+  const instrument = instruments[currentInstrument];
+  const now = audioContext.currentTime;
 
-    // Mark when this node set was created for cleanup purposes
-    nodeSet.createdAt = Date.now();
-    activeAudioNodes.add(nodeSet);
+  // Mark when this node set was created for cleanup purposes
+  nodeSet.createdAt = Date.now();
+  activeAudioNodes.add(nodeSet);
 
-    // Create fewer harmonics for memory efficiency, but more for priority sounds
-    const maxHarmonics = priority
-        ? Math.min(instrument.harmonics.length, 5)
-        : Math.min(instrument.harmonics.length, 3);
+  // Create fewer harmonics for memory efficiency, but more for priority sounds
+  const maxHarmonics = priority
+    ? Math.min(instrument.harmonics.length, 5)
+    : Math.min(instrument.harmonics.length, 3);
 
-    for (let i = 0; i < maxHarmonics; i++) {
-        const amplitude = instrument.harmonics[i];
-        const threshold = priority ? 0.05 : 0.1; 
+  for (let i = 0; i < maxHarmonics; i++) {
+    const amplitude = instrument.harmonics[i];
+    const threshold = priority ? 0.05 : 0.1;
 
-        if (amplitude > threshold) {
-            const oscillator = audioContext.createOscillator();
-            oscillator.type = instrument.waveform;
-            oscillator.frequency.setValueAtTime(frequency * (i + 1), now);
+    if (amplitude > threshold) {
+      const oscillator = audioContext.createOscillator();
+      oscillator.type = instrument.waveform;
+      oscillator.frequency.setValueAtTime(frequency * (i + 1), now);
 
-            oscillator.connect(nodeSet.gainNode);
-            nodeSet.oscillators.push(oscillator);
+      oscillator.connect(nodeSet.gainNode);
+      nodeSet.oscillators.push(oscillator);
 
-            // Start oscillator
-            oscillator.start(now);
-            oscillator.stop(now + duration);
+      // Start oscillator
+      oscillator.start(now);
+      oscillator.stop(now + duration);
 
-            // Clean up when done
-            oscillator.onended = () => {
-                if (nodeSet.oscillators.length === 1) {
-                    // Last oscillator in this set
-                    activeAudioNodes.delete(nodeSet);
-                    returnAudioNodeToPool(nodeSet);
-                }
-            };
+      // Clean up when done
+      oscillator.onended = () => {
+        if (nodeSet.oscillators.length === 1) {
+          // Last oscillator in this set
+          activeAudioNodes.delete(nodeSet);
+          returnAudioNodeToPool(nodeSet);
         }
+      };
     }
+  }
 
-    // ADSR Envelope - better volume for priority sounds
-    const baseVolume = priority ? 0.4 : 0.2;
-    const volume = velocity * baseVolume;
-    nodeSet.gainNode.gain.setValueAtTime(0, now);
-    nodeSet.gainNode.gain.linearRampToValueAtTime(volume, now + 0.01);
-    nodeSet.gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  // ADSR Envelope - better volume for priority sounds
+  const baseVolume = priority ? 0.4 : 0.2;
+  const volume = velocity * baseVolume;
+  nodeSet.gainNode.gain.setValueAtTime(0, now);
+  nodeSet.gainNode.gain.linearRampToValueAtTime(volume, now + 0.01);
+  nodeSet.gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 }
 
 // Keep original function signatures for compatibility
 window.changeInstrument = function (instrumentName) {
-    if (instruments[instrumentName]) {
-        currentInstrument = instrumentName;
-        console.log(`Switched to ${instrumentName} 🎹`);
-    }
+  if (instruments[instrumentName]) {
+    currentInstrument = instrumentName;
+    console.log(`Switched to ${instrumentName} 🎹`);
+  }
 };
 
 window.changeMelody = function (melodyName) {
-    if (melodies[melodyName]) {
-        melodySequence = melodies[melodyName];
-        currentNoteIndex = 0;
-        console.log(`Switched to ${melodyName} melody 🎵`);
-    }
+  if (melodies[melodyName]) {
+    melodySequence = melodies[melodyName];
+    currentNoteIndex = 0;
+    console.log(`Switched to ${melodyName} melody 🎵`);
+  }
 };
 
 // Audio initialization (same as before)
 function enableAudioOnInteraction() {
-    if (!isAudioInitialized) {
-        initAudio();
-        if (audioContext.state === "suspended") {
-            audioContext.resume();
-        }
-
-        document.removeEventListener("click", enableAudioOnInteraction);
-        document.removeEventListener("keydown", enableAudioOnInteraction);
-        document.removeEventListener("touchstart", enableAudioOnInteraction);
-        document.removeEventListener("mousemove", enableAudioOnInteraction);
+  if (!isAudioInitialized) {
+    initAudio();
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
     }
+
+    document.removeEventListener("click", enableAudioOnInteraction);
+    document.removeEventListener("keydown", enableAudioOnInteraction);
+    document.removeEventListener("touchstart", enableAudioOnInteraction);
+    document.removeEventListener("mousemove", enableAudioOnInteraction);
+  }
 }
 
 document.addEventListener("click", enableAudioOnInteraction);
@@ -254,9 +254,9 @@ document.addEventListener("touchstart", enableAudioOnInteraction);
 document.addEventListener("mousemove", enableAudioOnInteraction);
 
 function showAudioPrompt() {
-    if (!isAudioInitialized) {
-        const promptDiv = document.createElement("div");
-        promptDiv.innerHTML = `
+  if (!isAudioInitialized) {
+    const promptDiv = document.createElement("div");
+    promptDiv.innerHTML = `
                 <div style="
                     position: fixed;
                     top: 20px;
@@ -276,242 +276,243 @@ function showAudioPrompt() {
                     <small style="opacity: 0.8;">First balls always get sound priority</small>
                 </div>
             `;
-        document.body.appendChild(promptDiv);
+    document.body.appendChild(promptDiv);
 
-        const checkAudio = setInterval(() => {
-        if (isAudioInitialized) {
-            promptDiv.remove();
-            clearInterval(checkAudio);
-        }
-        }, 100);
-    }
+    const checkAudio = setInterval(() => {
+      if (isAudioInitialized) {
+        promptDiv.remove();
+        clearInterval(checkAudio);
+      }
+    }, 100);
+  }
 }
 
 setTimeout(showAudioPrompt, 1000);
 
 // Modified playNextNote with priority for first few balls
 function playNextNote(isPriorityBall = false) {
-    const noteName = melodySequence[currentNoteIndex];
-    const frequency = noteFrequencies[noteName];
+  const noteName = melodySequence[currentNoteIndex];
+  const frequency = noteFrequencies[noteName];
 
-    if (frequency) {
-        // First 5 balls always get priority audio
-        const priority = isPriorityBall || ballObjects.length <= 5;
-        playNote(frequency, 0.2, 0.5, priority);
-    }
+  if (frequency) {
+    // First 5 balls always get priority audio
+    const priority = isPriorityBall || ballObjects.length <= 5;
+    playNote(frequency, 0.2, 0.5, priority);
+  }
 
-    currentNoteIndex = (currentNoteIndex + 1) % melodySequence.length;
+  currentNoteIndex = (currentNoteIndex + 1) % melodySequence.length;
 }
 
 // ===== MEMORY-EFFICIENT PARTICLE SYSTEM =====
 class Particle {
-    constructor() {
-        this.reset();
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = 0;
+    this.y = 0;
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.size = 0;
+    this.life = 0;
+    this.maxLife = 0;
+    this.active = false;
+  }
+
+  init(x, y, velocityX, velocityY, size, life) {
+    this.x = x;
+    this.y = y;
+    this.velocityX = velocityX;
+    this.velocityY = velocityY;
+    this.size = size;
+    this.life = life;
+    this.maxLife = life;
+    this.active = true;
+  }
+
+  update() {
+    if (!this.active) return;
+
+    this.x += this.velocityX;
+    this.y += this.velocityY;
+    this.velocityX *= 0.99;
+    this.velocityY *= 0.99;
+    this.velocityY += 0.05;
+    this.life -= 1;
+    this.size *= 0.98;
+
+    if (this.life <= 0 || this.size <= 0.5) {
+      this.active = false;
     }
+  }
 
-    reset() {
-        this.x = 0;
-        this.y = 0;
-        this.velocityX = 0;
-        this.velocityY = 0;
-        this.size = 0;
-        this.life = 0;
-        this.maxLife = 0;
-        this.active = false;
-    }
+  draw() {
+    if (!this.active) return;
 
-    init(x, y, velocityX, velocityY, size, life) {
-        this.x = x;
-        this.y = y;
-        this.velocityX = velocityX;
-        this.velocityY = velocityY;
-        this.size = size;
-        this.life = life;
-        this.maxLife = life;
-        this.active = true;
-    }
-
-    update() {
-        if (!this.active) return;
-
-        this.x += this.velocityX;
-        this.y += this.velocityY;
-        this.velocityX *= 0.99;
-        this.velocityY *= 0.99;
-        this.velocityY += 0.05;
-        this.life -= 1;
-        this.size *= 0.98;
-
-        if (this.life <= 0 || this.size <= 0.5) {
-            this.active = false;
-        }
-    }
-
-    draw() {
-        if (!this.active) return;
-
-        const alpha = this.life / this.maxLife;
-        c.save();
-        c.globalAlpha = alpha * 0.6;
-        c.beginPath();
-        c.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        c.fillStyle = "#ffffff";
-        c.fill();
-        c.restore();
-    }
+    const alpha = this.life / this.maxLife;
+    c.save();
+    c.globalAlpha = alpha * 0.6;
+    c.beginPath();
+    c.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    c.fillStyle = "#ffffff";
+    c.fill();
+    c.restore();
+  }
 }
 
 // Particle pool
 const particlePool = new ObjectPool(
-    () => new Particle(),
-    (particle) => particle.reset(),
-    MAX_PARTICLES
+  () => new Particle(),
+  (particle) => particle.reset(),
+  MAX_PARTICLES
 );
 
 function createImpactParticles(x, y, intensity = 1) {
-    const particleCount = Math.min(Math.floor(3 * intensity), 5); // Much fewer particles
+  const particleCount = Math.min(Math.floor(3 * intensity), 5); // Much fewer particles
 
-    for (let i = 0; i < particleCount; i++) {
-        const particle = particlePool.get();
-        if (particle) {
-            const angle = (Math.PI * 2 * i) / particleCount;
-            const speed = 1 + Math.random() * 2;
-            const velocityX = Math.cos(angle) * speed;
-            const velocityY = Math.sin(angle) * speed;
-            const size = 1 + Math.random() * 2;
-            const life = 10 + Math.random() * 10;
+  for (let i = 0; i < particleCount; i++) {
+    const particle = particlePool.get();
+    if (particle) {
+      const angle = (Math.PI * 2 * i) / particleCount;
+      const speed = 1 + Math.random() * 2;
+      const velocityX = Math.cos(angle) * speed;
+      const velocityY = Math.sin(angle) * speed;
+      const size = 1 + Math.random() * 2;
+      const life = 10 + Math.random() * 10;
 
-            particle.init(x, y, velocityX, velocityY, size, life);
-        }
+      particle.init(x, y, velocityX, velocityY, size, life);
     }
+  }
 }
 
 function updateParticles() {
-    particlePool.active.forEach((particle) => {
-        particle.update();
-        particle.draw();
+  particlePool.active.forEach((particle) => {
+    particle.update();
+    particle.draw();
 
-        if (!particle.active) {
-            particlePool.release(particle);
-        }
-    });
+    if (!particle.active) {
+      particlePool.release(particle);
+    }
+  });
 }
 
 // ===== MEMORY-EFFICIENT BALL CLASS =====
 export class ball {
-    constructor(x, y, radius, color) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.color = color;
-        this.velocity = { x: 7, y: 7 };
-        this.friction = 0.999;
-        this.gravity = 0.2;
-        this.lastCollisionTime = 0;
-        this.frameCount = 0;
+  constructor(x, y, radius, color) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.color = color;
+    this.velocity = { x: 7, y: 7 };
+    this.friction = 0.999;
+    this.gravity = 0.2;
+    this.lastCollisionTime = 0;
+    this.frameCount = 0;
 
-        // Minimal trail for memory efficiency
-        this.trail = new Array(5).fill().map(() => ({ x: 0, y: 0 }));
-        this.trailIndex = 0;
+    // Minimal trail for memory efficiency
+    this.trail = new Array(5).fill().map(() => ({ x: 0, y: 0 }));
+    this.trailIndex = 0;
+  }
+
+  draw() {
+    this.frameCount++;
+
+    // Update trail only occasionally
+    if (this.frameCount % TRAIL_UPDATE_INTERVAL === 0) {
+      this.trail[this.trailIndex].x = this.x;
+      this.trail[this.trailIndex].y = this.y;
+      this.trailIndex = (this.trailIndex + 1) % this.trail.length;
     }
 
-    draw() {
-        this.frameCount++;
-
-        // Update trail only occasionally
-        if (this.frameCount % TRAIL_UPDATE_INTERVAL === 0) {
-            this.trail[this.trailIndex].x = this.x;
-            this.trail[this.trailIndex].y = this.y;
-            this.trailIndex = (this.trailIndex + 1) % this.trail.length;
-        }
-
-        // Draw simple trail
-        if (ballObjects.length < 100) {
-            // Only draw trails when fewer balls
-            c.save();
-            c.globalAlpha = 0.3;
-            c.strokeStyle = this.color;
-            c.lineWidth = this.radius * 0.5;
-            c.beginPath();
-            c.moveTo(this.trail[0].x, this.trail[0].y);
-            for (let i = 1; i < this.trail.length; i++) {
-                c.lineTo(this.trail[i].x, this.trail[i].y);
-            }
-            c.stroke();
-            c.restore();
-        }
-
-        // Draw ball - no expensive effects
-        c.save();
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        c.fillStyle = this.color;
-        c.fill();
-        c.strokeStyle = "#ffffff";
-        c.lineWidth = 1;
-        c.stroke();
-        c.restore();
+    // Draw simple trail
+    if (ballObjects.length < 100) {
+      // Only draw trails when fewer balls
+      c.save();
+      c.globalAlpha = 0.3;
+      c.strokeStyle = this.color;
+      c.lineWidth = this.radius * 0.5;
+      c.beginPath();
+      c.moveTo(this.trail[0].x, this.trail[0].y);
+      for (let i = 1; i < this.trail.length; i++) {
+        c.lineTo(this.trail[i].x, this.trail[i].y);
+      }
+      c.stroke();
+      c.restore();
     }
 
-    createCollisionEffect() {
-        // Much less frequent particle creation
-        if (particlePool.active.length < MAX_PARTICLES && Math.random() < 0.3) {
-            createImpactParticles(this.x, this.y, 0.3);
-        }
+    // Draw ball - no expensive effects
+    c.save();
+    c.beginPath();
+    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    c.fillStyle = this.color;
+    c.fill();
+    c.strokeStyle = "#ffffff";
+    c.lineWidth = 1;
+    c.stroke();
+    c.restore();
+  }
+
+  createCollisionEffect() {
+    // Much less frequent particle creation
+    if (particlePool.active.length < MAX_PARTICLES && Math.random() < 0.3) {
+      createImpactParticles(this.x, this.y, 0.3);
+    }
+  }
+
+  update() {
+    this.draw();
+
+    const currentTime = Date.now();
+    const canCollide = currentTime - this.lastCollisionTime > 100;
+
+    // Boundary collisions with priority audio
+    if (this.y + this.radius + this.velocity.y > canvas.height && canCollide) {
+      this.velocity.y = -this.velocity.y * this.friction;
+      this.createCollisionEffect();
+
+      // UPDATED: Priority audio for first few balls
+      const ballIndex = ballObjects.indexOf(this);
+      const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
+      if (Math.random() < (isPriorityBall ? 0.8 : 0.1)) {
+        playNextNote(isPriorityBall);
+      }
+
+      this.lastCollisionTime = currentTime;
+    } else {
+      this.velocity.y += this.gravity;
     }
 
-    update() {
-        this.draw();
-
-        const currentTime = Date.now();
-        const canCollide = currentTime - this.lastCollisionTime > 100;
-
-        // Boundary collisions with priority audio
-        if (this.y + this.radius + this.velocity.y > canvas.height && canCollide) {
-            this.velocity.y = -this.velocity.y * this.friction;
-            this.createCollisionEffect();
-
-            // UPDATED: Priority audio for first few balls
-            const ballIndex = ballObjects.indexOf(this);
-            const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
-            if (Math.random() < (isPriorityBall ? 0.8 : 0.1)) {
-                playNextNote(isPriorityBall);
-            }
-
-            this.lastCollisionTime = currentTime;
-        } else {
-            this.velocity.y += this.gravity;
-        }
-
-        if (this.y - this.radius + this.velocity.y < 0 && canCollide) {
-            this.velocity.y = -this.velocity.y * this.friction;
-            this.createCollisionEffect();
-            this.lastCollisionTime = currentTime;
-        }
-
-        if (
-            (this.x + this.radius + this.velocity.x > canvas.width ||
-            this.x - this.radius + this.velocity.x < 0) && canCollide
-        ) {
-            this.velocity.x = -this.velocity.x * this.friction;
-            this.createCollisionEffect();
-
-            // UPDATED: Priority audio for first few balls
-            const ballIndex = ballObjects.indexOf(this);
-            const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
-            if (Math.random() < (isPriorityBall ? 0.8 : 0.1)) {
-                playNextNote(isPriorityBall);
-            }
-
-            this.lastCollisionTime = currentTime;
-        }
-
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
+    if (this.y - this.radius + this.velocity.y < 0 && canCollide) {
+      this.velocity.y = -this.velocity.y * this.friction;
+      this.createCollisionEffect();
+      this.lastCollisionTime = currentTime;
     }
+
+    if (
+      (this.x + this.radius + this.velocity.x > canvas.width ||
+        this.x - this.radius + this.velocity.x < 0) &&
+      canCollide
+    ) {
+      this.velocity.x = -this.velocity.x * this.friction;
+      this.createCollisionEffect();
+
+      // UPDATED: Priority audio for first few balls
+      const ballIndex = ballObjects.indexOf(this);
+      const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
+      if (Math.random() < (isPriorityBall ? 0.8 : 0.1)) {
+        playNextNote(isPriorityBall);
+      }
+
+      this.lastCollisionTime = currentTime;
+    }
+
+    this.x += this.velocity.x;
+    this.y += this.velocity.y;
+  }
 }
 
-// ===== MEMORY-EFFICIENT RING CLASS =====
+// ===== OPTIMIZED RING CLASS =====
 export class circleRing {
   constructor(x, y, radius, color, openingWidth) {
     this.x = x;
@@ -524,6 +525,7 @@ export class circleRing {
     this.lastCollisionTime = 0;
     this.shouldDelete = false;
     this.ballPreviouslyOutside = true;
+    this.lastBallCollisions = new Map(); // Add per-ball collision tracking
   }
 
   draw() {
@@ -544,14 +546,40 @@ export class circleRing {
     this.draw();
     this.currentRotation += this.rotationSpeed;
     updateParticles();
+
+    // Clean up old collision history periodically
+    if (Math.random() < 0.01) {
+      // 1% chance per frame
+      this.cleanupCollisionHistory();
+    }
   }
 
-  // Fixed checkCollision method for circleRing class
+  cleanupCollisionHistory() {
+    if (!this.lastBallCollisions) return;
+
+    const currentTime = Date.now();
+    for (const [key, time] of this.lastBallCollisions.entries()) {
+      if (currentTime - time > 1000) {
+        // Remove entries older than 1 second
+        this.lastBallCollisions.delete(key);
+      }
+    }
+  }
+
   checkCollision(ballObj) {
     const currentTime = Date.now();
 
-    // Much shorter cooldown - only prevent rapid successive collisions
-    if (currentTime - this.lastCollisionTime < 50) {
+    // Shorter cooldown per ball (not global)
+    const ballId = ballObjects.indexOf(ballObj);
+    const collisionKey = `ball_${ballId}`;
+
+    if (!this.lastBallCollisions) {
+      this.lastBallCollisions = new Map();
+    }
+
+    const lastCollisionTime = this.lastBallCollisions.get(collisionKey) || 0;
+    if (currentTime - lastCollisionTime < 30) {
+      // Even shorter cooldown
       return;
     }
 
@@ -559,167 +587,229 @@ export class circleRing {
     const dy = ballObj.y - this.y;
     const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
-    // Ring collision boundaries
+    // Ring collision boundaries with some tolerance
     const strokeThickness = 6;
+    const tolerance = 2; // Add some tolerance for fast-moving balls
     const innerRadius = this.radius - strokeThickness / 2;
     const outerRadius = this.radius + strokeThickness / 2;
 
-    // Check if ball is in the ring area (between inner and outer radius)
+    // Expanded collision detection area for fast balls
+    const ballSpeed = Math.sqrt(
+      ballObj.velocity.x ** 2 + ballObj.velocity.y ** 2
+    );
+    const speedTolerance = Math.min(ballSpeed * 0.5, 10); // Scale with speed
+
     const ballInRingArea =
-      distanceToCenter >= innerRadius - ballObj.radius &&
-      distanceToCenter <= outerRadius + ballObj.radius;
+      distanceToCenter >=
+        innerRadius - ballObj.radius - tolerance - speedTolerance &&
+      distanceToCenter <=
+        outerRadius + ballObj.radius + tolerance + speedTolerance;
 
     if (!ballInRingArea) {
       this.ballPreviouslyOutside = true;
       return;
     }
 
-    // Calculate ball angle relative to ring center
-    let ballAngle = Math.atan2(dy, dx);
-    if (ballAngle < 0) ballAngle += 2 * Math.PI;
+    // PREDICTIVE COLLISION: Check where ball will be next frame
+    const nextX = ballObj.x + ballObj.velocity.x;
+    const nextY = ballObj.y + ballObj.velocity.y;
+    const nextDx = nextX - this.x;
+    const nextDy = nextY - this.y;
+    const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
 
-    // Calculate opening angles (normalized)
+    // Current and next frame angles
+    let ballAngle = Math.atan2(dy, dx);
+    let nextBallAngle = Math.atan2(nextDy, nextDx);
+    if (ballAngle < 0) ballAngle += 2 * Math.PI;
+    if (nextBallAngle < 0) nextBallAngle += 2 * Math.PI;
+
+    // Calculate opening angles with rotation
     let strokeStart =
       (this.openingWidth + this.currentRotation) % (2 * Math.PI);
     let strokeEnd = (Math.PI + this.currentRotation) % (2 * Math.PI);
     if (strokeStart < 0) strokeStart += 2 * Math.PI;
     if (strokeEnd < 0) strokeEnd += 2 * Math.PI;
 
-    // Check if ball is in the opening (gap in the ring)
-    let inOpening = false;
-    if (strokeStart < strokeEnd) {
-      // Normal case: opening doesn't cross 0
-      inOpening = ballAngle < strokeStart || ballAngle > strokeEnd;
-    } else {
-      // Opening crosses 0 radians
-      inOpening = ballAngle < strokeStart && ballAngle > strokeEnd;
+    // More robust opening detection
+    function isInOpening(angle, start, end) {
+      // Normalize angle
+      angle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+
+      if (start < end) {
+        return angle < start || angle > end;
+      } else {
+        return angle < start && angle > end;
+      }
     }
 
-    // If ball is in opening, allow passage and potentially delete ring
-    if (inOpening) {
-      if (this.ballPreviouslyOutside) {
-        this.shouldDelete = true;
-        createImpactParticles(ballObj.x, ballObj.y, 1);
-        console.log("Ring passed through - deleting ring");
+    const currentInOpening = isInOpening(ballAngle, strokeStart, strokeEnd);
+    const nextInOpening = isInOpening(nextBallAngle, strokeStart, strokeEnd);
+
+    // Check if ball is passing through opening
+    if (currentInOpening || nextInOpening) {
+      // Double-check: is ball actually in the ring thickness area?
+      const actuallyInRing =
+        distanceToCenter >= innerRadius - ballObj.radius &&
+        distanceToCenter <= outerRadius + ballObj.radius;
+
+      if (actuallyInRing && (currentInOpening || nextInOpening)) {
+        if (this.ballPreviouslyOutside) {
+          this.shouldDelete = true;
+          createImpactParticles(ballObj.x, ballObj.y, 1);
+          console.log("Ring passed through - deleting ring");
+        }
+        this.ballPreviouslyOutside = false;
+        return;
       }
-      this.ballPreviouslyOutside = false;
-      return;
     } else {
       this.ballPreviouslyOutside = true;
     }
 
-    // Ball is hitting the solid part of the ring - perform collision
+    // Enhanced collision detection for solid ring parts
     let collision = false;
     let normalX = 0,
       normalY = 0;
 
-    // Determine if collision is with inner or outer edge
-    if (distanceToCenter < this.radius) {
-      // Collision with inner edge
-      collision = true;
-      const unitX = dx / distanceToCenter;
-      const unitY = dy / distanceToCenter;
+    // Check both current and predicted positions for collision
+    const positions = [
+      { x: ballObj.x, y: ballObj.y, distance: distanceToCenter },
+      { x: nextX, y: nextY, distance: nextDistance },
+    ];
 
-      // Push ball to inside of inner radius
-      const targetDistance = innerRadius - ballObj.radius - 2;
-      ballObj.x = this.x + unitX * targetDistance;
-      ballObj.y = this.y + unitY * targetDistance;
+    for (const pos of positions) {
+      if (
+        pos.distance >= innerRadius - ballObj.radius - tolerance &&
+        pos.distance <= outerRadius + ballObj.radius + tolerance
+      ) {
+        let angle = Math.atan2(pos.y - this.y, pos.x - this.x);
+        if (angle < 0) angle += 2 * Math.PI;
 
-      // Normal points inward
-      normalX = -unitX;
-      normalY = -unitY;
-    } else {
-      // Collision with outer edge
-      collision = true;
-      const unitX = dx / distanceToCenter;
-      const unitY = dy / distanceToCenter;
+        // Only collide if NOT in opening
+        if (!isInOpening(angle, strokeStart, strokeEnd)) {
+          collision = true;
 
-      // Push ball to outside of outer radius
-      const targetDistance = outerRadius + ballObj.radius + 2;
-      ballObj.x = this.x + unitX * targetDistance;
-      ballObj.y = this.y + unitY * targetDistance;
+          const unitX = (pos.x - this.x) / pos.distance;
+          const unitY = (pos.y - this.y) / pos.distance;
 
-      // Normal points outward
-      normalX = unitX;
-      normalY = unitY;
+          if (pos.distance < this.radius) {
+            // Inner collision
+            const targetDistance = innerRadius - ballObj.radius - 3;
+            ballObj.x = this.x + unitX * targetDistance;
+            ballObj.y = this.y + unitY * targetDistance;
+            normalX = -unitX;
+            normalY = -unitY;
+          } else {
+            // Outer collision
+            const targetDistance = outerRadius + ballObj.radius + 3;
+            ballObj.x = this.x + unitX * targetDistance;
+            ballObj.y = this.y + unitY * targetDistance;
+            normalX = unitX;
+            normalY = unitY;
+          }
+          break; // Exit loop once collision is handled
+        }
+      }
     }
 
     if (collision) {
-      // Reflect velocity based on collision normal
+      // Enhanced velocity reflection
       const dotProduct =
         ballObj.velocity.x * normalX + ballObj.velocity.y * normalY;
       ballObj.velocity.x = ballObj.velocity.x - 2 * dotProduct * normalX;
       ballObj.velocity.y = ballObj.velocity.y - 2 * dotProduct * normalY;
 
-      // Ensure minimum speed to prevent balls getting stuck
+      // Add some randomness to prevent balls getting stuck in patterns
+      ballObj.velocity.x += (Math.random() - 0.5) * 0.5;
+      ballObj.velocity.y += (Math.random() - 0.5) * 0.5;
+
+      // Ensure minimum speed with better scaling
       const speed = Math.sqrt(
         ballObj.velocity.x ** 2 + ballObj.velocity.y ** 2
       );
-      const minSpeed = 3;
+      const minSpeed = 4; // Slightly higher minimum speed
       if (speed < minSpeed) {
         const scale = minSpeed / speed;
         ballObj.velocity.x *= scale;
         ballObj.velocity.y *= scale;
       }
 
-      // Spawn new ball only if we haven't reached the limit
-      // REMOVED the collision blocking when at MAX_BALLS
-      if (ballObjects.length < MAX_BALLS) {
+      // Limited ball spawning with better distribution
+      if (ballObjects.length < MAX_BALLS && Math.random() < 0.3) {
+        // Only 30% chance to spawn
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = 50 + Math.random() * 100;
+        const newX = this.x + Math.cos(angle) * distance;
+        const newY = this.y + Math.sin(angle) * distance;
+
+        // Make sure new ball is within canvas bounds
+        const clampedX = Math.max(50, Math.min(canvas.width - 50, newX));
+        const clampedY = Math.max(50, Math.min(canvas.height - 50, newY));
+
         const newBall = new ball(
-          canvas.width / 2 + (Math.random() - 0.5) * 100,
-          canvas.height / 2 + (Math.random() - 0.5) * 100,
+          clampedX,
+          clampedY,
           8 + Math.random() * 4,
           randomColor(colors)
         );
-        newBall.velocity.x = (Math.random() - 0.5) * 10;
-        newBall.velocity.y = (Math.random() - 0.5) * 10;
+
+        // Give new ball velocity away from collision point
+        const escapeAngle = Math.atan2(clampedY - this.y, clampedX - this.x);
+        newBall.velocity.x = Math.cos(escapeAngle) * (5 + Math.random() * 5);
+        newBall.velocity.y = Math.sin(escapeAngle) * (5 + Math.random() * 5);
+
         ballObjects.push(newBall);
       }
 
       // Create visual effect
       ballObj.createCollisionEffect();
 
-      // Play audio with priority
+      // Play audio
       const ballIndex = ballObjects.indexOf(ballObj);
       const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
-      if (Math.random() < (isPriorityBall ? 0.9 : 0.2)) {
+      if (Math.random() < (isPriorityBall ? 0.9 : 0.15)) {
+        // Reduced audio spam
         playNextNote(isPriorityBall);
       }
 
-      this.lastCollisionTime = currentTime;
-      console.log("Ring collision detected and handled");
+      // Record collision time for this specific ball
+      this.lastBallCollisions.set(collisionKey, currentTime);
+      console.log(
+        `Ring collision: Ball ${ballId} at distance ${distanceToCenter.toFixed(
+          1
+        )}`
+      );
     }
   }
 }
 
 // ===== MEMORY CLEANUP FUNCTIONS =====
 export function cleanupMemory() {
-    // Clean up off-screen balls
-    const margin = 500;
-    for (let i = ballObjects.length - 1; i >= 0; i--) {
-        const ball = ballObjects[i];
-        if (
-            ball.x < -margin ||
-            ball.x > canvas.width + margin ||
-            ball.y < -margin ||
-            ball.y > canvas.height + margin
-        ) {
-            ballObjects.splice(i, 1);
-        }
+  // Clean up off-screen balls
+  const margin = 500;
+  for (let i = ballObjects.length - 1; i >= 0; i--) {
+    const ball = ballObjects[i];
+    if (
+      ball.x < -margin ||
+      ball.x > canvas.width + margin ||
+      ball.y < -margin ||
+      ball.y > canvas.height + margin
+    ) {
+      ballObjects.splice(i, 1);
     }
+  }
 
-    // Force garbage collection hints
-    if (ballObjects.length > 500) {
-        // Keep only the most recent balls
-        ballObjects.splice(0, ballObjects.length - 400);
-    }
+  // Force garbage collection hints
+  if (ballObjects.length > 500) {
+    // Keep only the most recent balls
+    ballObjects.splice(0, ballObjects.length - 400);
+  }
 
-    // Clean up old audio nodes
-    cleanupOldAudioNodes();
+  // Clean up old audio nodes
+  cleanupOldAudioNodes();
 }
 
 export function logMemoryStats() {
-    console.log(`🧠 Memory Stats:
+  console.log(`🧠 Memory Stats:
         🔵 Balls: ${ballObjects.length}/${MAX_BALLS}
         ✨ Active Particles: ${particlePool.active.length}/${MAX_PARTICLES}
         🔊 Active Audio Nodes: ${activeAudioNodes.size}/${AUDIO_POOL_SIZE}
@@ -731,14 +821,14 @@ export function logMemoryStats() {
 
 // Cleanup function to call on page unload
 export function cleanup() {
-    particlePool.clear();
-    audioNodePool = [];
-    activeAudioNodes.clear();
-    ballObjects.length = 0;
+  particlePool.clear();
+  audioNodePool = [];
+  activeAudioNodes.clear();
+  ballObjects.length = 0;
 
-    if (audioContext) {
-        audioContext.close();
-    }
+  if (audioContext) {
+    audioContext.close();
+  }
 }
 
 // Register cleanup
