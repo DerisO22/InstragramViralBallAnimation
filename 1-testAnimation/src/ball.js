@@ -513,165 +513,183 @@ export class ball {
 
 // ===== MEMORY-EFFICIENT RING CLASS =====
 export class circleRing {
-    constructor(x, y, radius, color, openingWidth) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.color = color;
-        this.openingWidth = openingWidth;
-        this.rotationSpeed = Math.random() / 30;
-        this.currentRotation = Math.random();
-        this.lastCollisionTime = 0;
-        this.shouldDelete = false;
-        this.ballPreviouslyOutside = true;
+  constructor(x, y, radius, color, openingWidth) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.color = color;
+    this.openingWidth = openingWidth;
+    this.rotationSpeed = Math.random() / 30;
+    this.currentRotation = Math.random();
+    this.lastCollisionTime = 0;
+    this.shouldDelete = false;
+    this.ballPreviouslyOutside = true;
+  }
+
+  draw() {
+    const startAngle = this.openingWidth + this.currentRotation;
+    const endAngle = Math.PI + this.currentRotation;
+
+    // Simplified ring drawing
+    c.save();
+    c.beginPath();
+    c.arc(this.x, this.y, this.radius, startAngle, endAngle, false);
+    c.strokeStyle = this.color;
+    c.lineWidth = 6;
+    c.stroke();
+    c.restore();
+  }
+
+  update() {
+    this.draw();
+    this.currentRotation += this.rotationSpeed;
+    updateParticles();
+  }
+
+  // Fixed checkCollision method for circleRing class
+  checkCollision(ballObj) {
+    const currentTime = Date.now();
+
+    // Much shorter cooldown - only prevent rapid successive collisions
+    if (currentTime - this.lastCollisionTime < 50) {
+      return;
     }
 
-    draw() {
-        const startAngle = this.openingWidth + this.currentRotation;
-        const endAngle = Math.PI + this.currentRotation;
+    const dx = ballObj.x - this.x;
+    const dy = ballObj.y - this.y;
+    const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
 
-        // Simplified ring drawing
-        c.save();
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, startAngle, endAngle, false);
-        c.strokeStyle = this.color;
-        c.lineWidth = 6;
-        c.stroke();
-        c.restore();
+    // Ring collision boundaries
+    const strokeThickness = 6;
+    const innerRadius = this.radius - strokeThickness / 2;
+    const outerRadius = this.radius + strokeThickness / 2;
+
+    // Check if ball is in the ring area (between inner and outer radius)
+    const ballInRingArea =
+      distanceToCenter >= innerRadius - ballObj.radius &&
+      distanceToCenter <= outerRadius + ballObj.radius;
+
+    if (!ballInRingArea) {
+      this.ballPreviouslyOutside = true;
+      return;
     }
 
-    update() {
-        this.draw();
-        this.currentRotation += this.rotationSpeed;
-        updateParticles();
+    // Calculate ball angle relative to ring center
+    let ballAngle = Math.atan2(dy, dx);
+    if (ballAngle < 0) ballAngle += 2 * Math.PI;
+
+    // Calculate opening angles (normalized)
+    let strokeStart =
+      (this.openingWidth + this.currentRotation) % (2 * Math.PI);
+    let strokeEnd = (Math.PI + this.currentRotation) % (2 * Math.PI);
+    if (strokeStart < 0) strokeStart += 2 * Math.PI;
+    if (strokeEnd < 0) strokeEnd += 2 * Math.PI;
+
+    // Check if ball is in the opening (gap in the ring)
+    let inOpening = false;
+    if (strokeStart < strokeEnd) {
+      // Normal case: opening doesn't cross 0
+      inOpening = ballAngle < strokeStart || ballAngle > strokeEnd;
+    } else {
+      // Opening crosses 0 radians
+      inOpening = ballAngle < strokeStart && ballAngle > strokeEnd;
     }
 
-    checkCollision(ballObj) {
-        const currentTime = Date.now();
-
-        // Much longer cooldown to prevent excessive spawning
-        if (
-            currentTime - this.lastCollisionTime < 500 ||
-            ballObjects.length >= MAX_BALLS
-        ) {
-            return;
-        }
-
-        const dx = ballObj.x - this.x;
-        const dy = ballObj.y - this.y;
-        const distanceToCenter = Math.sqrt(dx * dx + dy * dy);
-
-        let ballAngle = Math.atan2(dy, dx);
-        if (ballAngle < 0) ballAngle += 2 * Math.PI;
-
-        let strokeStart = this.openingWidth + this.currentRotation;
-        let strokeEnd = Math.PI + this.currentRotation;
-
-        strokeStart = ((strokeStart % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-        strokeEnd = ((strokeEnd % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-
-        let inOpening = false;
-        if (strokeStart < strokeEnd) {
-            inOpening = !(ballAngle >= strokeStart && ballAngle <= strokeEnd);
-        } else {
-            inOpening = !(ballAngle >= strokeStart || ballAngle <= strokeEnd);
-        }
-
-        const strokeThickness = 6;
-        const innerRadius = this.radius - strokeThickness / 2;
-        const outerRadius = this.radius + strokeThickness / 2;
-
-        const ballInRingArea =
-        distanceToCenter >= innerRadius - ballObj.radius &&
-        distanceToCenter <= outerRadius + ballObj.radius;
-
-        if (inOpening && ballInRingArea) {
-            if (this.ballPreviouslyOutside) {
-                this.shouldDelete = true;
-                createImpactParticles(ballObj.x, ballObj.y, 1);
-            }
-            this.ballPreviouslyOutside = false;
-        } else {
-            this.ballPreviouslyOutside = true;
-        }
-
-        if (currentTime - this.lastCollisionTime < 100 || inOpening) {
-            return;
-        }
-
-        let collision = false;
-        let normalX = 0,
-        normalY = 0;
-
-        if (
-            distanceToCenter >= innerRadius - ballObj.radius &&
-            distanceToCenter <= outerRadius + ballObj.radius
-        ) {
-            if (distanceToCenter < this.radius) {
-                collision = true;
-                const unitX = dx / distanceToCenter;
-                const unitY = dy / distanceToCenter;
-
-                ballObj.x = this.x + unitX * (innerRadius - ballObj.radius - 1);
-                ballObj.y = this.y + unitY * (innerRadius - ballObj.radius - 1);
-
-                normalX = -unitX;
-                normalY = -unitY;
-            } else {
-                collision = true;
-                const unitX = dx / distanceToCenter;
-                const unitY = dy / distanceToCenter;
-
-                ballObj.x = this.x + unitX * (outerRadius + ballObj.radius + 1);
-                ballObj.y = this.y + unitY * (outerRadius + ballObj.radius + 1);
-
-                normalX = unitX;
-                normalY = unitY;
-            }
-        }
-
-        if (collision) {
-            const dotProduct =
-            ballObj.velocity.x * normalX + ballObj.velocity.y * normalY;
-            ballObj.velocity.x = ballObj.velocity.x - 2 * dotProduct * normalX;
-            ballObj.velocity.y = ballObj.velocity.y - 2 * dotProduct * normalY;
-
-            const speed = Math.sqrt(
-                ballObj.velocity.x * ballObj.velocity.x +
-                ballObj.velocity.y * ballObj.velocity.y
-            );
-            const minSpeed = 2;
-            if (speed < minSpeed) {
-                const scale = minSpeed / speed;
-                ballObj.velocity.x *= scale;
-                ballObj.velocity.y *= scale;
-            }
-
-            // CONTROLLED BALL SPAWNING
-            if (ballObjects.length < MAX_BALLS) {
-                const newBall = new ball(
-                    canvas.width / 2 + (Math.random() - 0.5) * 100,
-                    canvas.height / 2 + (Math.random() - 0.5) * 100,
-                    8 + Math.random() * 4,
-                    randomColor(colors)
-                );
-                newBall.velocity.x = (Math.random() - 0.5) * 10;
-                newBall.velocity.y = (Math.random() - 0.5) * 10;
-                ballObjects.push(newBall);
-            }
-
-            ballObj.createCollisionEffect();
-
-            // UPDATED: Priority audio for ring collisions
-            const ballIndex = ballObjects.indexOf(ballObj);
-            const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
-            if (Math.random() < (isPriorityBall ? 0.9 : 0.2)) {
-                playNextNote(isPriorityBall);
-            }
-
-            this.lastCollisionTime = currentTime;
-        }
+    // If ball is in opening, allow passage and potentially delete ring
+    if (inOpening) {
+      if (this.ballPreviouslyOutside) {
+        this.shouldDelete = true;
+        createImpactParticles(ballObj.x, ballObj.y, 1);
+        console.log("Ring passed through - deleting ring");
+      }
+      this.ballPreviouslyOutside = false;
+      return;
+    } else {
+      this.ballPreviouslyOutside = true;
     }
+
+    // Ball is hitting the solid part of the ring - perform collision
+    let collision = false;
+    let normalX = 0,
+      normalY = 0;
+
+    // Determine if collision is with inner or outer edge
+    if (distanceToCenter < this.radius) {
+      // Collision with inner edge
+      collision = true;
+      const unitX = dx / distanceToCenter;
+      const unitY = dy / distanceToCenter;
+
+      // Push ball to inside of inner radius
+      const targetDistance = innerRadius - ballObj.radius - 2;
+      ballObj.x = this.x + unitX * targetDistance;
+      ballObj.y = this.y + unitY * targetDistance;
+
+      // Normal points inward
+      normalX = -unitX;
+      normalY = -unitY;
+    } else {
+      // Collision with outer edge
+      collision = true;
+      const unitX = dx / distanceToCenter;
+      const unitY = dy / distanceToCenter;
+
+      // Push ball to outside of outer radius
+      const targetDistance = outerRadius + ballObj.radius + 2;
+      ballObj.x = this.x + unitX * targetDistance;
+      ballObj.y = this.y + unitY * targetDistance;
+
+      // Normal points outward
+      normalX = unitX;
+      normalY = unitY;
+    }
+
+    if (collision) {
+      // Reflect velocity based on collision normal
+      const dotProduct =
+        ballObj.velocity.x * normalX + ballObj.velocity.y * normalY;
+      ballObj.velocity.x = ballObj.velocity.x - 2 * dotProduct * normalX;
+      ballObj.velocity.y = ballObj.velocity.y - 2 * dotProduct * normalY;
+
+      // Ensure minimum speed to prevent balls getting stuck
+      const speed = Math.sqrt(
+        ballObj.velocity.x ** 2 + ballObj.velocity.y ** 2
+      );
+      const minSpeed = 3;
+      if (speed < minSpeed) {
+        const scale = minSpeed / speed;
+        ballObj.velocity.x *= scale;
+        ballObj.velocity.y *= scale;
+      }
+
+      // Spawn new ball only if we haven't reached the limit
+      // REMOVED the collision blocking when at MAX_BALLS
+      if (ballObjects.length < MAX_BALLS) {
+        const newBall = new ball(
+          canvas.width / 2 + (Math.random() - 0.5) * 100,
+          canvas.height / 2 + (Math.random() - 0.5) * 100,
+          8 + Math.random() * 4,
+          randomColor(colors)
+        );
+        newBall.velocity.x = (Math.random() - 0.5) * 10;
+        newBall.velocity.y = (Math.random() - 0.5) * 10;
+        ballObjects.push(newBall);
+      }
+
+      // Create visual effect
+      ballObj.createCollisionEffect();
+
+      // Play audio with priority
+      const ballIndex = ballObjects.indexOf(ballObj);
+      const isPriorityBall = ballIndex < 5 || ballObjects.length <= 10;
+      if (Math.random() < (isPriorityBall ? 0.9 : 0.2)) {
+        playNextNote(isPriorityBall);
+      }
+
+      this.lastCollisionTime = currentTime;
+      console.log("Ring collision detected and handled");
+    }
+  }
 }
 
 // ===== MEMORY CLEANUP FUNCTIONS =====
