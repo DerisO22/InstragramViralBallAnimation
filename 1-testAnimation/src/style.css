@@ -145,7 +145,6 @@ button:focus-visible {
 	z-index: 1000;
 	border: 2px solid #00eaff;
 	backdrop-filter: blur(10px);
-	max-width: 250px;
 	display: none; 
 }
 

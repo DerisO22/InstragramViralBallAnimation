@@ -9,11 +9,14 @@ export const camera = {
     y: 0,
     targetX: 0,
     targetY: 0,
-    smoothing: 0.08, 
+    smoothing: 0.08,
     shakeX: 0,
     shakeY: 0,
-    shakeIntensity: 0,
-    shakeDecay: 0.9
+    shakeMagnitude: 0,
+    shakeDecay: 0.9,
+    followingEnabled: true, 
+    manualX: 0,
+    manualY: 0, 
 };
 
 export const colors = ['#ff0000', '#00ff00', '#0000ff', '#ff00ff'];
