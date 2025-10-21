@@ -427,203 +427,203 @@ function aggressiveCleanup() {
 
 // Event Listeners
 addEventListener("mousemove", (event) => {
-  mouse.x = event.clientX;
-  mouse.y = event.clientY;
+	mouse.x = event.clientX;
+	mouse.y = event.clientY;
 });
 
 addEventListener("resize", () => {
-  resizeCanvas();
-  if (gameStarted) {
-    // Reinitialize camera properties after resize
-    initializeCameraProperties();
-    init();
-  }
+	resizeCanvas();
+	if (gameStarted) {
+		// Reinitialize camera properties after resize
+		initializeCameraProperties();
+		init();
+	}
 });
 
 // Enhanced keyboard controls with camera following
 addEventListener("keydown", (event) => {
-  if (!gameStarted) {
-    if (event.key === " " || event.key === "Enter") {
-      event.preventDefault();
-      startGame();
-    }
-    return;
-  }
+	if (!gameStarted) {
+		if (event.key === " " || event.key === "Enter") {
+			event.preventDefault();
+			startGame();
+		}
+		return;
+	}
 
-  switch (event.key.toLowerCase()) {
-    case "1":
-      camera.smoothing = 0.01;
-      console.log("📷 Camera smoothing: Ultra Slow (0.01)");
-      break;
-    case "2":
-      camera.smoothing = 0.08;
-      console.log("📷 Camera smoothing: Normal (0.08)");
-      break;
-    case "3":
-      camera.smoothing = 0.15;
-      console.log("📷 Camera smoothing: Fast (0.15)");
-      break;
-    case "4":
-      audioControlVisibility = !audioControlVisibility;
-      audioControls.style.display = audioControlVisibility ? "block" : "none";
-      break;
-    case "5":
-      // Manual memory cleanup
-      cleanupMemory();
-      console.log("🧹 Manual cleanup performed!");
-      break;
-    case "6":
-      // Memory stats
-      logMemoryStats();
-      break;
-    case "7":
-      // Reset to single ball
-      if (ballObjects.length > 1) {
-        const firstBall = ballObjects[0];
-        ballObjects = [firstBall];
-        console.log("🔄 Reset to single ball!");
-      }
-      break;
-    case "8":
-      // Spawn 10 balls for testing
-      spawnBallBurst(10);
-      break;
-    case "9":
-      // Spawn 100 balls for stress test
-      spawnBallBurst(100);
-      break;
-    case "0":
-      // Spawn 500 balls for extreme stress test
-      spawnBallBurst(500);
-      break;
-    case "f":
-      const wasFollowing = toggleCameraFollowing();
-      console.log(`Camera following toggled: ${wasFollowing ? "ON" : "OFF"}`);
-      break;
-    case "r":
-      if (camera.followingEnabled === false) {
-        centerCamera();
-      } else {
-        console.log("Camera is following - disable following first with 'F'");
-      }
-      break;
-    case "arrowup":
-    case "w":
-      event.preventDefault();
-      if (camera.followingEnabled === false) {
-        moveCameraManually(0, -50);
-        console.log("Camera moved up");
-      } else {
-        console.log("Press 'F' to disable following first");
-      }
-      break;
-    case "arrowdown":
-    case "s":
-      event.preventDefault();
-      if (camera.followingEnabled === false) {
-        moveCameraManually(0, 50);
-        console.log("Camera moved down");
-      } else {
-        console.log("Press 'F' to disable following first");
-      }
-      break;
-    case "arrowleft":
-    case "a":
-      event.preventDefault();
-      if (camera.followingEnabled === false) {
-        moveCameraManually(-50, 0);
-        console.log("Camera moved left");
-      } else {
-        console.log("Press 'F' to disable following first");
-      }
-      break;
-    case "arrowright":
-    case "d":
-      event.preventDefault();
-      if (camera.followingEnabled === false) {
-        moveCameraManually(50, 0);
-        console.log("Camera moved right");
-      } else {
-        console.log("Press 'F' to disable following first");
-      }
-      break;
-    case "m":
-      // Detailed memory stats
-      logMemoryStats();
-      console.log(
-        `Browser Memory Usage: ${
-          (performance.memory?.usedJSHeapSize / 1024 / 1024)?.toFixed(2) ||
-          "N/A"
-        } MB`
-      );
-      break;
-    case "c":
-      // Aggressive cleanup
-      aggressiveCleanup();
-      break;
-    case "t":
-      // Toggle trails (for performance)
-      console.log("Trail rendering toggled");
-      break;
-    case " ":
-      event.preventDefault();
-      addScreenShake(20);
-      break;
-  }
+  	switch (event.key.toLowerCase()) {
+		case "1":
+			camera.smoothing = 0.01;
+			console.log("📷 Camera smoothing: Ultra Slow (0.01)");
+			break;
+		case "2":
+			camera.smoothing = 0.08;
+			console.log("📷 Camera smoothing: Normal (0.08)");
+			break;
+		case "3":
+			camera.smoothing = 0.15;
+			console.log("📷 Camera smoothing: Fast (0.15)");
+			break;
+		case "4":
+			audioControlVisibility = !audioControlVisibility;
+			audioControls.style.display = audioControlVisibility ? "block" : "none";
+			break;
+		case "5":
+			// Manual memory cleanup
+			cleanupMemory();
+			console.log("🧹 Manual cleanup performed!");
+			break;
+		case "6":
+			// Memory stats
+			logMemoryStats();
+			break;
+		case "7":
+			// Reset to single ball
+			if (ballObjects.length > 1) {
+				const firstBall = ballObjects[0];
+				ballObjects = [firstBall];
+				console.log("🔄 Reset to single ball!");
+			}
+			break;
+		case "8":
+			// Spawn 10 balls for testing
+			spawnBallBurst(10);
+			break;
+		case "9":
+			// Spawn 100 balls for stress test
+			spawnBallBurst(100);
+			break;
+		case "0":
+			// Spawn 500 balls for extreme stress test
+			spawnBallBurst(500);
+			break;
+			case "f":
+			const wasFollowing = toggleCameraFollowing();
+			console.log(`Camera following toggled: ${wasFollowing ? "ON" : "OFF"}`);
+			break;
+		case "r":
+			if (camera.followingEnabled === false) {
+				centerCamera();
+			} else {
+				console.log("Camera is following - disable following first with 'F'");
+			}
+			break;
+		case "arrowup":
+		case "w":
+			event.preventDefault();
+			if (camera.followingEnabled === false) {
+				moveCameraManually(0, -50);
+				console.log("Camera moved up");
+			} else {
+				console.log("Press 'F' to disable following first");
+			}
+			break;
+		case "arrowdown":
+		case "s":
+			event.preventDefault();
+			if (camera.followingEnabled === false) {
+				moveCameraManually(0, 50);
+				console.log("Camera moved down");
+			} else {
+				console.log("Press 'F' to disable following first");
+			}
+			break;
+		case "arrowleft":
+		case "a":
+			event.preventDefault();
+			if (camera.followingEnabled === false) {
+				moveCameraManually(-50, 0);
+				console.log("Camera moved left");
+			} else {
+				console.log("Press 'F' to disable following first");
+			}
+			break;
+		case "arrowright":
+		case "d":
+			event.preventDefault();
+			if (camera.followingEnabled === false) {
+				moveCameraManually(50, 0);
+				console.log("Camera moved right");
+			} else {
+				console.log("Press 'F' to disable following first");
+			}
+			break;
+		case "m":
+			// Detailed memory stats
+			logMemoryStats();
+			console.log(
+				`Browser Memory Usage: ${
+				(performance.memory?.usedJSHeapSize / 1024 / 1024)?.toFixed(2) ||
+				"N/A"
+				} MB`
+			);
+			break;
+		case "c":
+			// Aggressive cleanup
+			aggressiveCleanup();
+			break;
+			case "t":
+			// Toggle trails (for performance)
+			console.log("Trail rendering toggled");
+			break;
+		case " ":
+			event.preventDefault();
+			addScreenShake(20);
+			break;
+	}
 });
 
 // Prevent space bar page scroll
 addEventListener("keydown", (event) => {
-  if (event.key === " ") {
-    event.preventDefault();
-  }
+	if (event.key === " ") {
+		event.preventDefault();
+	}
 });
 
 // Memory monitoring
 setInterval(() => {
-  if (gameStarted && performance.memory) {
-    const memUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
+	if (gameStarted && performance.memory) {
+		const memUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
 
-    // Auto-cleanup if memory usage gets too high
-    if (memUsage > 100 && ballObjects.length > 100) {
-      console.log(
-        `High memory usage: ${memUsage.toFixed(2)}MB - Auto cleanup triggered`
-      );
-      aggressiveCleanup();
-    }
-  }
+		// Auto-cleanup if memory usage gets too high
+		if (memUsage > 100 && ballObjects.length > 100) {
+			console.log(
+				`High memory usage: ${memUsage.toFixed(2)}MB - Auto cleanup triggered`
+			);
+			aggressiveCleanup();
+		}
+	}
 }, 5000);
 
 // Cleanup on page unload
 window.addEventListener("beforeunload", () => {
-  cleanup();
-  console.log("Page cleanup completed");
+	cleanup();
+	console.log("Page cleanup completed");
 });
 
 // Enhanced performance tips in console
 console.log(`
-MEMORY-OPTIMIZED BALL SYSTEM
-================================
+	MEMORY-OPTIMIZED BALL SYSTEM
+	================================
 
-CONTROLS:
-1-3: Camera speed
-4: Toggle audio controls  
-5: Manual cleanup
-6: Memory stats
-7: Reset to 1 ball
-8: Spawn 10 balls
-9: Spawn 100 balls (stress test)
-0: Spawn 500 balls (extreme test)
-F: Toggle camera following 
-R: Center camera (manual mode)
-WASD/Arrows: Move camera (manual mode)
-M: Detailed memory info
-C: Aggressive cleanup
-Space: Screen shake
+	CONTROLS:
+	1-3: Camera speed
+	4: Toggle audio controls  
+	5: Manual cleanup
+	6: Memory stats
+	7: Reset to 1 ball
+	8: Spawn 10 balls
+	9: Spawn 100 balls (stress test)
+	0: Spawn 500 balls (extreme test)
+	F: Toggle camera following 
+	R: Center camera (manual mode)
+	WASD/Arrows: Move camera (manual mode)
+	M: Detailed memory info
+	C: Aggressive cleanup
+	Space: Screen shake
 
-CAMERA CONTROLS:
-- Press 'F' to toggle between following and manual camera
-- In manual mode, use WASD or arrow keys to move camera
-- Press 'R' to center camera when in manual mode
-- Camera status shown in performance panel
+	CAMERA CONTROLS:
+	- Press 'F' to toggle between following and manual camera
+	- In manual mode, use WASD or arrow keys to move camera
+	- Press 'R' to center camera when in manual mode
+	- Camera status shown in performance panel
 `);
